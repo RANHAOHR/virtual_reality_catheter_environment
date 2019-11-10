@@ -51,7 +51,7 @@ void Object::Load(char* file, float s, float rx, float ry, float rz,
 
 	char DataType[128];
 	float a, b, c;
-	unsigned int v1, v2, v3, v4, t1, t2, t3, t4, n1, n2, n3, n4;
+	unsigned int v1, v2, v3, t1, t2, t3, n1, n2, n3;
 	// Scan the file and count the faces and vertices
 	VertexCount = FaceCount = 0;
 	while(!feof(pObjectFile))
@@ -524,29 +524,38 @@ Vertex* ClipPolygon(Vertex* input, int* out_count)
     //length should be either 0 or 2
     int length1 = 0;
     Vertex* output1;
-	Vertex* outputX1 = checkClipX( input[0], input[1], length1);
-    if(length1 == 2 ){
-    	printf(" length1 \n");
-    	printf("outputX1[0] is %f, %f, %f\n", outputX1[0].x, outputX1[0].y, outputX1[0].z);
-    	printf("outputX1[1] is %f, %f, %f\n", outputX1[1].x, outputX1[1].y, outputX1[1].z);
-        output1 = checkClipY( outputX1[0], outputX1[1], length1);
+    checkClipZ( input[0], input[1], length1);
+    if (length1 == 2 )
+    {
+		Vertex* outputX1 = checkClipX( input[0], input[1], length1);
+	    if(length1 == 2 ){
+	        output1 = checkClipY( outputX1[0], outputX1[1], length1);
+	    }
     }
-    
+
     int length2 = 0;
     Vertex* output2;
-    Vertex* outputX2 = checkClipX( input[1], input[2], length2);
-    if(length2 == 2 ){
+    checkClipZ( input[1], input[2], length2);
+    if (length2 == 2 )
+    {
+	    Vertex* outputX2 = checkClipX( input[1], input[2], length2);
+	    if(length2 == 2 ){
 
-        output2  = checkClipY( outputX2[0], outputX2[1], length2);
-    }
+	        output2  = checkClipY( outputX2[0], outputX2[1], length2);
+	    }
+	}
 
     int length3 = 0;
     Vertex* output3;
-    Vertex* outputX3 = checkClipX( input[2], input[0], length3);
-    if(length3 == 2 ){
+    checkClipZ(  input[2], input[0], length3 );
+    if (length3 == 2 )
+    {
+	    Vertex* outputX3 = checkClipX( input[2], input[0], length3);
+	    if(length3 == 2 ){
 
-        output3 = checkClipY( outputX3[0], outputX3[1], length3);
-    }
+	        output3 = checkClipY( outputX3[0], outputX3[1], length3);
+	    }
+	}
 
     *out_count = length1 + length2 + length3;
 
@@ -744,5 +753,18 @@ Vertex* checkClipY( Vertex &vert1, Vertex &vert2, int &length){
     }
 
     return newVertex;
+
+}
+
+void checkClipZ( Vertex &vert1, Vertex &vert2,int &length){
+    Vertex* newVertex;
+
+
+    if (vert1.z <= 0.0 || vert2.z <= 0.0)
+    {
+	    length = 0;
+    }else{
+    	length = 2;
+    }
 
 }
