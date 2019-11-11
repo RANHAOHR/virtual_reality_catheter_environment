@@ -18,7 +18,7 @@ LightSpec::LightSpec()
 
 	lightCount = 1;
 
-	lightPosition[0] = 0.0; lightPosition[1] = 0.0; lightPosition[2] = 0.0; lightPosition[3] = 1.0; 
+	lightPosition[0] = 0.0; lightPosition[1] = 10.0; lightPosition[2] = 0.0; lightPosition[3] = 1.0; 
 
 	ambientColor[0] = 1.0; ambientColor[1] = 1.0; ambientColor[2] = 1.0; ambientColor[3] = 1.0; 
 	dissuseColor[0] = 1.0; dissuseColor[1] = 1.0; dissuseColor[2] = 1.0; dissuseColor[3] = 1.0; 
@@ -162,6 +162,21 @@ void ShaderSpec::SetUniformParams(){
 		if (locns == -1)
 	        std::cout << "Warning: can't find uniform variable ns_ !\n";
 	    glUniform1f(locns, ns_);
+
+		GLint locKa = glGetUniformLocation(program, "K_a");
+		if (locKa == -1)
+	        std::cout << "Warning: can't find uniform variable K_a !\n";
+	    glUniform4f(locKa, K_a[0], K_a[1], K_a[2], K_a[3] );
+
+		GLint locKd = glGetUniformLocation(program, "K_d");
+		if (locKd == -1)
+	        std::cout << "Warning: can't find uniform variable K_d !\n";
+	    glUniform4f(locKd, K_d[0], K_d[1], K_d[2], K_d[3] );
+
+		GLint locKs = glGetUniformLocation(program, "K_s");
+		if (locKs == -1)
+	        std::cout << "Warning: can't find uniform variable K_s !\n";
+	    glUniform4f(locKs, K_s[0], K_s[1], K_s[2], K_s[3] );
 	}
 
 	if (illuminationMode == 1 ) // Cook-Torrance illumination
