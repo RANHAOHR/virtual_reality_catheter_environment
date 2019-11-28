@@ -1,117 +1,150 @@
+/*
 
-// Allow use of M_PI constant
-#define _USE_MATH_DEFINES
+EECS 366/466 COMPUTER GRAPHICS
+Template for Assignment 8-MAPPING
+Spring 2006
 
+*/
 #include <stdio.h>
 #include <stdlib.h>
-#include "shaders/shaders.h"
-#include "camera_geometry/camera_geometry.h"
-
-#include <fstream>
 #include <iostream>
+#include <math.h>
 
-#include <glm/glm.hpp>
-#include <glm/vec3.hpp>
-#include <glm/vec2.hpp>
-#include "glm/gtc/matrix_transform.hpp"
+#include <GL/glew.h>
+#include <GL/glut.h>
+
+# include "catheter_scene.h"
+#include "read_tga.h"
+# include "object.h"
+
+#define PI 3.14159265359
+
+#define PrintOpenGLError()::PrintOGLError(__FILE__, __LINE__)
 
 using namespace std;
-// #define M_PI 3.14159265359
 
-// User Interface Variables
+
+//Illimunation and shading related declerations
+char *shaderFileRead(char *fn);
+
+GLuint vertex_shader,fragment_shader,p;
+int illimunationMode = 0;
+int shadingMode = 0;
+int lightSource = 0;
+int program=-1;
+GLuint id;
+
+//Parameters for Copper (From: "Computer Graphics Using OpenGL" BY F.S. Hill, Jr.) 
+GLfloat ambient_cont [] = {0.19125,0.0735,0.0225};
+GLfloat diffuse_cont [] = {0.7038,0.27048,0.0828};
+GLfloat specular_cont [] = {0.256777,0.137622,0.086014};
+GLfloat ns_ = 5000;
+
+
+//Projection, camera contral related declerations
+int WindowWidth,WindowHeight;
+
+
+float CameraRadius = 10;
+float CameraTheta = PI / 2;
+float CameraPhi = PI / 2;
 int MouseX = 0;
 int MouseY = 0;
 bool MouseLeft = false;
-bool MouseMiddle = false;
 bool MouseRight = false;
-bool PerspectiveMode = true;
-bool ShowAxes = true;
-bool SelectionMode = false;
-int SelectedObject = 0;
-bool ShowBoundingBoxes = true;
-int WindowWidth = 300, WindowHeight = 300;
 
-float CameraRadius = 10;
-float CameraTheta = M_PI / 2;
-float CameraPhi = M_PI / 2;
+float norm(point &p_){
 
-// Scene Content Variables
-Scene* pDisplayScene;
-Camera* pDisplayCamera;
+	float res = sqrt(p_.x * p_.x + p_.y * p_.y + p_.z * p_.z);
+	return res;
 
-LightSpec lightSource;
-// 	// cout << lightSource->lightPosition[0] << endl;
-ShaderSpec heartShader("heart_cross_section.mtl", 0);
+}
 
-void DisplayFunc()
-{
-		int length;
-	Vertex* input;
-	Vertex* output;
-	Vertex	temp,temp1,temp2,temp3;
-	Vertex  orig,xunit,yunit,zunit;
+point cross(point &p1, point &p2){
+
+	point res;
+	res.x = p1.y * p2.z - p2.y * p1.z;
+	res.y = p1.z * p2.x - p2.z * p1.x;
+	res.z = p1.x * p2.y - p1.y * p2.x;
+	return res;
+
+}
+
+void mappingFunction( Object &mesh){
+
+	for (int i = 0; i < mesh.faces; i++)
+	{
+
+		glBegin(GL_TRIANGLES);
+			point v1, v2, v3, n1, n2, n3, coord1,coord2, coord3;
+			v1 = mesh.vertList[mesh.faceList[i].v1];
+			v2 = mesh.vertList[mesh.faceList[i].v2];
+			v3 = mesh.vertList[mesh.faceList[i].v3];
+			n1 = mesh.normList[mesh.faceList[i].n1];
+			n2 = mesh.normList[mesh.faceList[i].n2];
+			n3 = mesh.normList[mesh.faceList[i].n3];
+
+			glNormal3f(n1.x, n1.y, n1.z);
+			// glTexCoord2f (coord1.x, coord1.y);
+			glVertex3f(v1.x, v1.y, v1.z);
 	
-	// vertices to be used in drawing the coordiante axes
-	orig.x=orig.y=orig.z=xunit.y=xunit.z=yunit.x=yunit.z=zunit.x=zunit.y=0.0;
-	orig.h=xunit.x=xunit.h=yunit.y=yunit.h=zunit.z=zunit.h=1.0;
+			glNormal3f(n2.x, n2.y, n2.z);
+			// glTexCoord2f (coord2.x, coord2.y);
+			glVertex3f(v2.x, v2.y, v2.z);
+				
+			glNormal3f(n3.x, n3.y, n3.z);
+			// glTexCoord2f (coord3.x, coord3.y);
+			glVertex3f(v3.x, v3.y, v3.z);
+
+		glEnd();
+
+	}	
+
+
+}
+
+void DisplayFunc(void) 
+{
 
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 	//load projection and viewing transforms
 	glMatrixMode(GL_PROJECTION);
 	glLoadIdentity();
-
-	pDisplayCamera->Perspective();
+        
+	gluPerspective(60,(GLdouble) WindowWidth/WindowHeight,0.01,10000);
 
 	glMatrixMode(GL_MODELVIEW);
 	glLoadIdentity();
+	gluLookAt(CameraRadius*cos(CameraTheta)*sin(CameraPhi),
+			  CameraRadius*cos(CameraPhi),
+			  CameraRadius*sin(CameraTheta)*sin(CameraPhi),
+			  0,0,0,
+			  0,1,0);
 
-	glEnable(GL_DEPTH_TEST);
+	glEnable(GL_DEPTH_TEST);	
+	glEnable(GL_TEXTURE_2D);
 
-	glutSolidTeapot(1);
- 
-	// glColor3f(0, 0, 1);
-	// int i = 0;
-	// for(int j = 0; j < pDisplayScene->pObjectList[i].FaceCount; j++)
-	// {
-	// 	input = new Vertex[3];
-	// 	input[0] = pDisplayScene->pObjectList[i].pVertexList[pDisplayScene->pObjectList[i].pFaceList[j].v1];
-	// 	input[1] = pDisplayScene->pObjectList[i].pVertexList[pDisplayScene->pObjectList[i].pFaceList[j].v2];
-	// 	input[2] = pDisplayScene->pObjectList[i].pVertexList[pDisplayScene->pObjectList[i].pFaceList[j].v3];
+    setHeartShaders();
 
-	// 	for (int k=0; k<3; k++){
-	// 		temp	= Transform(pDisplayScene->pObjectList[i].ModelMatrix,input[k]);
-	// 		temp2	= Transform(pDisplayCamera->ViewingMatrix,temp);
-	// 		input[k]= Transform(pDisplayCamera->ProjectionMatrix,temp2);
-	// 	}
+    Object heart("heart_cross_section.obj", 1, 0.0, 0.0, 0.0, 0.0, 1.0, -3.0, 1.0);
+    mappingFunction(heart);
 
-	// 	output = ClipPolygon(input, &length);
+    setCatheterShaders();
+    Object catheter("catheter_model.obj", 1, 90.0, 0.0, 0.0, 0.4, 0.0, 1.6, 20.0);
+    mappingFunction(catheter);
 
-	// 	glBegin(GL_POLYGON);
-	// 	for(int k = 0; k < length; k++)
-	// 		glVertex2f(output[k].x/output[k].h, output[k].y/output[k].h);
-	// 	glEnd();
-
-	// 	delete [] input;
-	// 	input = NULL;
-	// 	delete [] output;
-	// 	output = NULL;
-	// }
-
-
+//	setParameters(program);
 	glutSwapBuffers();
-
 }
 
 void ReshapeFunc(int x,int y)
 {
-	// Get the correct view proportionality for the new window size
-	pDisplayCamera->ViewWidth = pDisplayCamera->ViewWidth*((float)x/WindowWidth);
-	pDisplayCamera->ViewHeight = pDisplayCamera->ViewHeight*((float)y/WindowHeight);
-	glViewport(0,0,x,y);
+    glViewport(0,0,x,y);
     WindowWidth = x;
     WindowHeight = y;
 }
+
 
 void MouseFunc(int button,int state,int x,int y)
 {
@@ -119,75 +152,27 @@ void MouseFunc(int button,int state,int x,int y)
 	MouseY = y;
 
     if(button == GLUT_LEFT_BUTTON)
-		MouseLeft = !state;
-	if(button == GLUT_MIDDLE_BUTTON)
-		MouseMiddle = !state;
+		MouseLeft = !(bool) state;
 	if(button == GLUT_RIGHT_BUTTON)
-		MouseRight = !state;
-
-	if(MouseLeft && SelectionMode)
-	{
-		// Select a new object with (x,y) mapped back to the (-1.1,1.1)x(-1.1,1.1) view volume
-		SelectedObject = Select(SelectedObject, pDisplayScene, pDisplayCamera,
-			2.2*(float)x/WindowWidth - 1.1, 1.1 - 2.2*(float)y/WindowHeight);
-		glutPostRedisplay();
-	}
+		MouseRight = !(bool) state;
 }
 
 void MotionFunc(int x, int y)
 {
-	if(MouseLeft && !SelectionMode)
-		pDisplayCamera->Pan(((float) x - MouseX)/128, ((float) y - MouseY)/128);
-	if(MouseMiddle && !SelectionMode)
-		pDisplayCamera->Move(((float) MouseX - x)/32, ((float) y - MouseY)/32, 0);
-	if(MouseRight && !SelectionMode)
-		pDisplayCamera->Move(0, 0, ((float) y - MouseY)/32);
-
-    float alpha = 0.01;
-	if(MouseMiddle && SelectionMode)
+	if(MouseLeft)
 	{
-		// Move the Near Plane
-		// ADD CODE HERE
-		if( y > MouseY ){
-            pDisplayCamera->NearPlane =  pDisplayCamera->NearPlane + alpha * ((float) y - MouseY);
-            if(pDisplayCamera->NearPlane >= pDisplayCamera->FarPlane){
-                pDisplayCamera->NearPlane = pDisplayCamera->FarPlane - 2.0;
-            }
-
-            if(pDisplayCamera->NearPlane <= pDisplayCamera->Position.z){
-                pDisplayCamera->NearPlane = pDisplayCamera->Position.z + 1.0;
-            }
-        }
-
-        if( y < MouseY ){
-            pDisplayCamera->NearPlane =  pDisplayCamera->NearPlane - alpha * ((float) y - MouseY);
-            if(pDisplayCamera->NearPlane >= pDisplayCamera->FarPlane){
-                pDisplayCamera->NearPlane = pDisplayCamera->FarPlane - 2.0;
-            }
-
-            if(pDisplayCamera->NearPlane <= pDisplayCamera->Position.z){
-                pDisplayCamera->NearPlane = pDisplayCamera->Position.z + 1.0;
-            }
-        }
+        CameraTheta += 0.01*PI*(MouseX - x);
+		CameraPhi += 0.01*PI*(MouseY - y);
+		if (CameraPhi > (PI - 0.01))
+			CameraPhi = PI - 0.01;
+		if (CameraPhi < 0.01)
+			CameraPhi = 0.01;
 	}
-
-	if(MouseRight && SelectionMode)
+	if(MouseRight)
 	{
-		// Move the Far Plane
-		// ADD CODE HERE
-        if( (y > MouseY) ){
-            pDisplayCamera->FarPlane =  pDisplayCamera->FarPlane + alpha * ((float) y - MouseY);
-            if(pDisplayCamera->FarPlane <= pDisplayCamera->NearPlane){
-                pDisplayCamera->FarPlane = pDisplayCamera->NearPlane + 2.0;
-            }
-        }
-
-        if( (y < MouseY) ){
-            pDisplayCamera->FarPlane =  pDisplayCamera->FarPlane - alpha * ((float) y - MouseY);
-            if(pDisplayCamera->FarPlane <= pDisplayCamera->NearPlane){
-                pDisplayCamera->FarPlane = pDisplayCamera->NearPlane + 2.0;
-            }
-        }
+        CameraRadius += 0.2*(MouseY-y);
+		if(CameraRadius <= 0)
+			CameraRadius = 0.2;
 	}
     
 	MouseX = x;
@@ -196,122 +181,57 @@ void MotionFunc(int x, int y)
 	glutPostRedisplay();
 }
 
+//Motion and camera controls
 void KeyboardFunc(unsigned char key, int x, int y)
 {
     switch(key)
 	{
-	case 'O':
-	case 'o':
-		pDisplayScene->pObjectList[SelectedObject].LocalRotate(M_PI/32, 0, 0);
-		break;
-	case 'I':
-	case 'i':
-		pDisplayScene->pObjectList[SelectedObject].LocalRotate(-M_PI/32, 0, 0);
-		break;
-	case 'L':
-	case 'l':
-		pDisplayScene->pObjectList[SelectedObject].LocalRotate(0, M_PI/32, 0);
-		break;
-	case 'K':
-	case 'k':
-		pDisplayScene->pObjectList[SelectedObject].LocalRotate(0, -M_PI/32, 0);
-		break;
-	case ',':
-		pDisplayScene->pObjectList[SelectedObject].LocalRotate(0, 0, M_PI/32);
-		break;
-	case 'M':
-	case 'm':
-		pDisplayScene->pObjectList[SelectedObject].LocalRotate(0, 0, -M_PI/32);
-		break;
-	case '6':
-		pDisplayScene->pObjectList[SelectedObject].WorldTranslate(M_PI/32, 0, 0);
-		break;
-	case '4':
-		pDisplayScene->pObjectList[SelectedObject].WorldTranslate(-M_PI/32, 0, 0);
-		break;
-	case '8':
-		pDisplayScene->pObjectList[SelectedObject].WorldTranslate(0, M_PI/32, 0);
-		break;
-	case '2':
-		pDisplayScene->pObjectList[SelectedObject].WorldTranslate(0, -M_PI/32, 0);
-		break;
-	case '9':
-		pDisplayScene->pObjectList[SelectedObject].WorldTranslate(0, 0, M_PI/32);
-		break;
-	case '1':
-		pDisplayScene->pObjectList[SelectedObject].WorldTranslate(0, 0, -M_PI/32);
-		break;
-	case ']':
-		pDisplayScene->pObjectList[SelectedObject].WorldRotate(M_PI/32, 0, 0);
-		break;
-	case '[':
-		pDisplayScene->pObjectList[SelectedObject].WorldRotate(-M_PI/32, 0, 0);
-		break;
-	case 39:	// Apostrophe
-		pDisplayScene->pObjectList[SelectedObject].WorldRotate(0, M_PI/32, 0);
-		break;
-	case 59:	// Semicolon
-		pDisplayScene->pObjectList[SelectedObject].WorldRotate(0, -M_PI/32, 0);
-		break;
-	case '/':
-		pDisplayScene->pObjectList[SelectedObject].WorldRotate(0, 0, M_PI/32);
-		break;
-	case '.':
-		pDisplayScene->pObjectList[SelectedObject].WorldRotate(0, 0, -M_PI/32);
-		break;
-	case '=':
-		pDisplayScene->pObjectList[SelectedObject].LocalScale(1.05);
-		break;
-	case '-':
-		pDisplayScene->pObjectList[SelectedObject].LocalScale(0.95);
-		break;
-	case 'A':
-	case 'a':
-		ShowAxes = !ShowAxes;
-		break;
-	case 'B':
-	case 'b':
-		ShowBoundingBoxes = !ShowBoundingBoxes;
-		break;
-	case 'N':
-	case 'n':
-		SelectionMode = !SelectionMode;
-		if(SelectionMode){
-			cout << "Selection Mode" << endl;
-		}
-		else{
-			cout << "Camera Mode" << endl;
-		}
-		break;
-	case 'P':
-	case 'p':
-		PerspectiveMode = !PerspectiveMode;
-		if(PerspectiveMode) {
-            glutSetWindowTitle("Assignment 5 (Perspective)");
-        }else{
-            glutSetWindowTitle("Assignment 5 (Orthogonal)");
-		}
-		break;
 	case 'Q':
 	case 'q':
 		exit(1);
 		break;
-	case 'Y':
-	case 'y':
-		pDisplayCamera->MoveView(0.5);
+	case 'w':
+	case 'W':
+		if (illimunationMode == 0)
+		{
+			illimunationMode = 1;
+		}
+		else
+		{
+			illimunationMode = 0;
+		}
 		break;
-	case 'U':
-	case 'u':
-		pDisplayCamera->MoveView(-0.5);
+	case 'e':
+	case 'E':
+		if (shadingMode == 0)
+		{
+			shadingMode =1;
+		}
+		else
+		{
+			shadingMode =0;
+		}
 		break;
-	case 'H':
-	case 'h':
-		pDisplayCamera->ScaleView(0.95);
+	case 'd':
+	case 'D':
+		if (lightSource == 0)
+		{
+			lightSource =1;
+		}
+		else
+		{
+			lightSource =0;
+		}
 		break;
-	case 'J':
-	case 'j':
-		pDisplayCamera->ScaleView(1.05);
+	case 'f':
+	case 'F':
+		if (lightSource == 1)
+		{
+			//change color of the secondary light source at each key press, 
+			//light color cycling through pure red, green, blue, and white.
+		}
 		break;
+
     default:
 		break;
     }
@@ -321,19 +241,12 @@ void KeyboardFunc(unsigned char key, int x, int y)
 
 int main(int argc, char **argv) 
 {			  
-    pDisplayScene = new Scene;
-
-
-	pDisplayScene->Load("scene1.dat");
-	pDisplayCamera = new Camera;
-	pDisplayCamera->ViewWidth = (float)WindowWidth/32;
-	pDisplayCamera->ViewHeight = (float)WindowHeight/32;
 
 	glutInit(&argc, argv);
 	glutInitDisplayMode(GLUT_DEPTH | GLUT_DOUBLE | GLUT_RGBA);
 	glutInitWindowPosition(100,100);
-	glutInitWindowSize(WindowWidth, WindowHeight);
-	glutCreateWindow("Scene");
+	glutInitWindowSize(320,320);
+	glutCreateWindow("Assignment 8");
 
 	glutDisplayFunc(DisplayFunc);
 	glutReshapeFunc(ReshapeFunc);
@@ -341,10 +254,278 @@ int main(int argc, char **argv)
     glutMotionFunc(MotionFunc);
     glutKeyboardFunc(KeyboardFunc);
 
-	lightSource.lightSpecification();
-	heartShader.setShaders();
+//	setShaders();
 
 	glutMainLoop();
 
 	return 0;
+}
+
+/*************************************************************
+Shader related methods,
+Setting the shader files
+Setting the shader variables
+*************************************************************/
+
+void error_exit(int status, char *text)
+{
+
+	// Print error message
+
+	fprintf(stderr,"Internal Error %i: ", status);
+	fprintf(stderr,text);
+	printf("\nTerminating as Result of Internal Error.\nPress Enter to exit.\n");
+
+	// Keep the terminal open
+
+	int anyKey = getchar();
+
+	// Exit program
+
+	exit(status);
+}
+
+int PrintOGLError(char *file, int line)
+{
+    GLenum glErr;
+    int    retCode = 0;
+
+    glErr = glGetError();
+    while (glErr != GL_NO_ERROR)
+    {
+        printf("glError in file %s @ line %d: %s\n", file, line, gluErrorString(glErr));
+        retCode = 1;
+        glErr = glGetError();
+    }
+    return retCode;
+}
+
+
+void setHeartShaders()
+{
+	glewInit();
+	char *vs = NULL,*fs = NULL;
+
+	//create the empty shader objects and get their handles
+	vertex_shader = glCreateShader(GL_VERTEX_SHADER);
+	fragment_shader = glCreateShader(GL_FRAGMENT_SHADER);
+	//read the shader files and store the strings in corresponding char. arrays.
+	vs = shaderFileRead("heartshader.vert");
+	fs = shaderFileRead("heartshader.frag");
+
+	const char * vv = vs;
+	const char * ff = fs;
+
+//	GLint vertCompiled, fragCompiled;
+
+	//set the shader's source code by using the strings read from the shader files.
+	glShaderSource(vertex_shader, 1, &vv,NULL);
+	glShaderSource(fragment_shader, 1, &ff,NULL);
+
+	free(vs);free(fs);
+
+	//Compile the shader objects
+	glCompileShader(vertex_shader);
+	glCompileShader(fragment_shader);
+
+	//create an empty program object to attach the shader objects
+	p = glCreateProgram();
+
+
+	//attach the shader objects to the program object
+	glAttachShader(p,vertex_shader);
+	glAttachShader(p,fragment_shader);
+	// define unifrom variables
+
+	/*
+	**************
+	Programming Tip:
+	***************
+	Delete the attached shader objects once they are attached.
+	They will be flagged for removal and will be freed when they are no more used.
+	*/
+	glDeleteShader(vertex_shader);
+	glDeleteShader(fragment_shader);
+
+	//Link the created program.
+	/*
+	**************
+	Programming Tip:
+	***************
+	You can trace the status of link operation by calling
+	"glGetObjectParameterARB(p,GL_OBJECT_LINK_STATUS_ARB)"
+	*/
+	glLinkProgram(p);
+
+	//Start to use the program object, which is the part of the current rendering state
+	glUseProgram(p);
+
+
+	setParameters(p);
+
+}
+
+
+void setCatheterShaders()
+{
+    glewInit();
+    char *vs = NULL,*fs = NULL;
+
+    //create the empty shader objects and get their handles
+    vertex_shader = glCreateShader(GL_VERTEX_SHADER);
+    fragment_shader = glCreateShader(GL_FRAGMENT_SHADER);
+    //read the shader files and store the strings in corresponding char. arrays.
+    vs = shaderFileRead("cathetershader.vert");
+    fs = shaderFileRead("cathetershader.frag");
+
+    const char * vv = vs;
+    const char * ff = fs;
+
+//	GLint vertCompiled, fragCompiled;
+
+    //set the shader's source code by using the strings read from the shader files.
+    glShaderSource(vertex_shader, 1, &vv,NULL);
+    glShaderSource(fragment_shader, 1, &ff,NULL);
+
+    free(vs);free(fs);
+
+    //Compile the shader objects
+    glCompileShader(vertex_shader);
+    glCompileShader(fragment_shader);
+
+    //create an empty program object to attach the shader objects
+    p = glCreateProgram();
+
+
+    //attach the shader objects to the program object
+    glAttachShader(p,vertex_shader);
+    glAttachShader(p,fragment_shader);
+    // define unifrom variables
+
+    /*
+    **************
+    Programming Tip:
+    ***************
+    Delete the attached shader objects once they are attached.
+    They will be flagged for removal and will be freed when they are no more used.
+    */
+    glDeleteShader(vertex_shader);
+    glDeleteShader(fragment_shader);
+
+    //Link the created program.
+    /*
+    **************
+    Programming Tip:
+    ***************
+    You can trace the status of link operation by calling
+    "glGetObjectParameterARB(p,GL_OBJECT_LINK_STATUS_ARB)"
+    */
+    glLinkProgram(p);
+
+    //Start to use the program object, which is the part of the current rendering state
+    glUseProgram(p);
+
+    setParameters(p);
+
+}
+
+//Gets the location of the uniform variable given with "name" in the memory
+//and tests whether the process was successfull.
+//Returns the location of the queried uniform variable
+int getUniformVariable(GLuint program,char *name)
+{
+	int location = glGetUniformLocationARB(program, name);
+	
+	if (location == -1)
+	{
+ 		error_exit(1007, "No such uniform variable");
+	}
+	PrintOpenGLError();
+	return location;
+}
+
+void update_Light_Position()
+{
+	
+	// Create light components
+	GLfloat light_position[] = { CameraRadius*cos(CameraTheta)*sin(CameraPhi),			  
+			  CameraRadius*cos(CameraPhi) , 
+			  CameraRadius*sin(CameraTheta)*sin(CameraPhi),0.0 };
+	glLightfv(GL_LIGHT0, GL_POSITION, light_position);
+	GLfloat ambientColor[] = {1.0,1.0,1.0,1.0};
+	GLfloat dissuseColor[] = {0.0,1.0,1.0,1.0};
+	GLfloat specularColor[] = {0.0,1.0,1.0,1.0};	
+	glLightfv(GL_LIGHT0, GL_AMBIENT, ambientColor);
+	glLightfv(GL_LIGHT0, GL_DIFFUSE, dissuseColor);
+	glLightfv(GL_LIGHT0, GL_SPECULAR, specularColor);
+	glEnable(GL_LIGHTING);
+	glEnable(GL_LIGHT0);
+}
+
+//Sets the light positions, etc. parameters for the shaders
+void setParameters(GLuint program)
+{
+	int light_loc;
+	int ambient_loc,diffuse_loc,specular_loc;
+	int exponent_loc;
+
+	//sample variable used to demonstrate how attributes are used in vertex shaders.
+	//can be defined as gloabal and can change per vertex
+	float tangent = 0.0;
+	float tangent_loc;
+
+	update_Light_Position();
+
+	GLint locns = glGetUniformLocation(program, "ns_");
+	if (locns == -1)
+        std::cout << "Warning: can't find uniform variable ns_ !\n";
+    glUniform1f(locns, ns_);
+
+	GLint loc = glGetUniformLocation(program, "texture");
+
+	if (loc == -1)
+        std::cout << "Warning: can't find uniform variable texture !\n";
+    glUniform1f(loc, id);
+}
+
+
+/****************************************************************
+Utility methods:
+shader file reader
+mesh reader for objectt
+****************************************************************/
+//Read the shader files, given as parameter.
+char *shaderFileRead(char *fn) {
+
+
+	FILE *fp = fopen(fn,"r");
+	if(!fp)
+	{
+		cout<< "Failed to load " << fn << endl;
+		return " ";
+	}
+	else
+	{
+		cout << "Successfully loaded " << fn << endl;
+	}
+	
+	char *content = NULL;
+
+	int count=0;
+
+	if (fp != NULL) 
+	{
+		fseek(fp, 0, SEEK_END);
+		count = ftell(fp);
+		rewind(fp);
+
+		if (count > 0) 
+		{
+			content = (char *)malloc(sizeof(char) * (count+1));
+			count = fread(content,sizeof(char),count,fp);
+			content[count] = '\0';
+		}
+		fclose(fp);
+	}
+	return content;
 }

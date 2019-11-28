@@ -1,1 +1,0 @@
-# virtual_reality_catheter_environment
