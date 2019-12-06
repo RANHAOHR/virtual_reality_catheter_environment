@@ -65,6 +65,16 @@ Object::Object(char* file, int sign, float rx, float ry, float rz, float tx, flo
 		vertList[i] =  Transform(ModelMatrix, vert_);
 	}
 
+	// for (int i = 5000; i < 6000; ++i)
+	// {
+	// 	point vert_ = vertList[i];
+	// 	vert_.x = vert_.x + 1;
+	// 	vert_.y = vert_.y + 1;
+	// 	vert_.z = vert_.z - 1;
+	// 	vertList[i] = vert_;
+	// }
+
+
 	float *inverseTrans_ = inverseTransp(ModelMatrix); // if normal needs to be transformed
 
 	for (int i = 0; i < norms; ++i)
@@ -121,6 +131,7 @@ void Object::load(char* file, int sign)
 //	cout << "Number of faces: " << faces << endl;
 //	cout << "Number of VN: " << norms << endl;
 
+
 	// Load and create the faces and vertices
 	int CurrentVertex = 0, CurrentNormal = 0, CurrentTexture = 0, CurrentFace = 0;
 	while(!feof(pObjectFile))
@@ -136,6 +147,50 @@ void Object::load(char* file, int sign)
 			vertList[CurrentVertex].y = y;//+1;
 			vertList[CurrentVertex].z = z;//-3;
 			vertList[CurrentVertex].h = 1;
+
+			if (min_x > x)
+			{
+				min_x = x;
+			}
+
+		    if (max_x < x)
+			{
+				max_x = x;
+			}
+
+
+		    if (min_y > y)
+			{
+				min_y = y;
+			}
+
+
+		    if (max_y < y)
+			{
+				max_y = y;
+			}
+
+		    if (min_z > z)
+			{
+				min_z = z;
+			}
+
+		    if (max_z < z)
+			{
+				max_z = z;
+			}
+	    
+
+		    obj_h = max_y - min_y;
+		    obj_x = (max_x + min_x) /2;
+		    obj_z = (max_z + min_z) /2;
+		    obj_y = min_y;
+		    if( (max_x - min_x) > (max_z - min_z) ){
+		    	obj_r = (max_x - min_x);
+		    }else{
+		    	obj_r = (max_z - min_z);
+		    }
+
 			CurrentVertex++;
 		}
 		else if(strcmp( DataType, "vt" ) == 0){

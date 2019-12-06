@@ -27,6 +27,8 @@ public:
 
 	int verts, faces, norms, textures;    // Number of vertices, faces and normals in the system
 	point *vertList, *normList, *textList; // Vertex and Normal Lists
+	float max_x, min_x, max_y, min_y, max_z, min_z; 
+	float obj_h, obj_r, obj_x, obj_y, obj_z;
 	faceStruct *faceList;	    // Face List
 	float ModelMatrix[16];
 };

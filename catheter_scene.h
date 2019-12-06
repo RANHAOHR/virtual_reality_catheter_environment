@@ -12,7 +12,7 @@ void setParameters(GLuint program);
 void error_exit(int status, char *text);
 int PrintOGLError(char *file, int line);
 void setHeartShaders();
-void setCatheterShaders();
+void setHumanShaders();
 void meshReader (char *filename,int sign);
 
 #endif 

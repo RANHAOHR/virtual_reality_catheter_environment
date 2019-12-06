@@ -7,5 +7,7 @@ void main(void)
    normal_ = normalize(gl_NormalMatrix * gl_Normal);
 
    gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex;  
+
+
 }
           

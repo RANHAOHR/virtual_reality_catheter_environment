@@ -33,7 +33,7 @@ int shadingMode = 0;
 int lightSource = 0;
 int program=-1;
 GLuint id;
-
+float alpha_ = 0.0;
 //Parameters for Copper (From: "Computer Graphics Using OpenGL" BY F.S. Hill, Jr.) 
 GLfloat ambient_cont [] = {0.19125,0.0735,0.0225};
 GLfloat diffuse_cont [] = {0.7038,0.27048,0.0828};
@@ -70,7 +70,22 @@ point cross(point &p1, point &p2){
 
 }
 
-void mappingFunction( Object &mesh){
+
+point textureCoordCylinder(point &v_, Object &mesh){
+	// compute v first: normalize to 0-1
+
+	point coord;
+	coord.y = (v_.y -  mesh.min_y) / mesh.obj_h; 
+	float delt_x = v_.x - mesh.obj_x;
+	float delt_z = v_.z - mesh.obj_z;
+	float theta_ = atan2(delt_z, delt_x); // from range (-pi , pi)
+
+	coord.x = (theta_ + PI )/  (2 * PI);
+ 
+	return coord;
+}
+
+void renderFunction( Object &mesh){
 
 	for (int i = 0; i < mesh.faces; i++)
 	{
@@ -103,6 +118,81 @@ void mappingFunction( Object &mesh){
 
 }
 
+
+void mappingFunction(Object &mesh, const char *fileName){
+
+	// Load image from tga file
+	TGA *TGAImage	= new TGA(fileName);
+	//TGA *TGAImage	= new TGA("./cubicenvironmentmap/cm_right.tga");
+
+	// Use to dimensions of the image as the texture dimensions
+	uint width	= TGAImage->GetWidth();
+	uint height	= TGAImage->GetHeigth();
+	
+	// The parameters for actual textures are changed
+	glGenTextures(1, &id);
+
+	glBindTexture(GL_TEXTURE_2D, id);
+
+	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+
+	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+
+	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_NEAREST);
+
+	glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE);
+
+	// Finaly build the mipmaps
+	glTexImage2D (GL_TEXTURE_2D, 0, 4, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, TGAImage->GetPixels());
+
+	gluBuild2DMipmaps(GL_TEXTURE_2D, 4, width, height, GL_RGBA, GL_UNSIGNED_BYTE, TGAImage->GetPixels());
+
+	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+
+	glEnable( GL_TEXTURE_2D );
+
+	glBindTexture (GL_TEXTURE_2D, id); 
+
+    delete TGAImage;
+
+	for (int i = 0; i < mesh.faces; i++)
+	{
+
+		glBegin(GL_TRIANGLES);
+			point v1, v2, v3, n1, n2, n3, coord1,coord2, coord3;
+			v1 = mesh.vertList[mesh.faceList[i].v1];
+			v2 = mesh.vertList[mesh.faceList[i].v2];
+			v3 = mesh.vertList[mesh.faceList[i].v3];
+			n1 = mesh.normList[mesh.faceList[i].n1];
+			n2 = mesh.normList[mesh.faceList[i].n2];
+			n3 = mesh.normList[mesh.faceList[i].n3];
+
+
+			coord1 = textureCoordCylinder(v1, mesh);
+			coord2 = textureCoordCylinder(v2, mesh);
+			coord3 = textureCoordCylinder(v3, mesh);	
+
+			glNormal3f(n1.x, n1.y, n1.z);
+			glTexCoord2f (coord1.x, coord1.y);
+			glVertex3f(v1.x, v1.y, v1.z);
+	
+			glNormal3f(n2.x, n2.y, n2.z);
+			glTexCoord2f (coord2.x, coord2.y);
+			glVertex3f(v2.x, v2.y, v2.z);
+				
+			glNormal3f(n3.x, n3.y, n3.z);
+			glTexCoord2f (coord3.x, coord3.y);
+			glVertex3f(v3.x, v3.y, v3.z);
+
+		glEnd();
+
+	}	
+
+}
+
+
 void DisplayFunc(void) 
 {
 
@@ -125,16 +215,25 @@ void DisplayFunc(void)
 	glEnable(GL_DEPTH_TEST);	
 	glEnable(GL_TEXTURE_2D);
 
+
     setHeartShaders();
+    Object heart("heart_cross_section.obj", 1, -100.0, 30.0, 0.0, 0.4, 1.0, -0.1, 0.5);
+    renderFunction(heart);
 
-    Object heart("heart_cross_section.obj", 1, 0.0, 0.0, 0.0, 0.0, 1.0, -3.0, 1.0);
-    mappingFunction(heart);
+	glEnable(GL_BLEND);
+	glBlendFunc(GL_ONE_MINUS_SRC_ALPHA, GL_SRC_ALPHA);
+    setHumanShaders();
 
-    setCatheterShaders();
-    Object catheter("catheter_model.obj", 1, 90.0, 0.0, 0.0, 0.4, 0.0, 1.6, 20.0);
-    mappingFunction(catheter);
+    Object human("human_large.obj", 1, 0.0, 0.0, 0.0, 0.0, -14.5, 0.0, 4.5);
+    // const char *path1 = "skin.tga";
+   	renderFunction(human);
 
-//	setParameters(program);
+	glDisable(GL_BLEND);
+
+    // setCatheterShaders();
+    // Object catheter("catheter_model.obj", 1, 90.0, 0.0, 0.0, 0.4, 0.0, 1.6, 20.0);
+    // mappingFunction(catheter);
+
 	glutSwapBuffers();
 }
 
@@ -214,21 +313,18 @@ void KeyboardFunc(unsigned char key, int x, int y)
 		break;
 	case 'd':
 	case 'D':
-		if (lightSource == 0)
+		alpha_ -= 0.05;
+		if (alpha_ <= 0.0)
 		{
-			lightSource =1;
-		}
-		else
-		{
-			lightSource =0;
+			alpha_ = 0.0;
 		}
 		break;
 	case 'f':
 	case 'F':
-		if (lightSource == 1)
+		alpha_ += 0.05;
+		if (alpha_ >= 1.0)
 		{
-			//change color of the secondary light source at each key press, 
-			//light color cycling through pure red, green, blue, and white.
+			alpha_ = 1.0;
 		}
 		break;
 
@@ -246,7 +342,7 @@ int main(int argc, char **argv)
 	glutInitDisplayMode(GLUT_DEPTH | GLUT_DOUBLE | GLUT_RGBA);
 	glutInitWindowPosition(100,100);
 	glutInitWindowSize(320,320);
-	glutCreateWindow("Assignment 8");
+	glutCreateWindow("Scene");
 
 	glutDisplayFunc(DisplayFunc);
 	glutReshapeFunc(ReshapeFunc);
@@ -255,7 +351,6 @@ int main(int argc, char **argv)
     glutKeyboardFunc(KeyboardFunc);
 
 //	setShaders();
-
 	glutMainLoop();
 
 	return 0;
@@ -366,7 +461,7 @@ void setHeartShaders()
 }
 
 
-void setCatheterShaders()
+void setHumanShaders()
 {
     glewInit();
     char *vs = NULL,*fs = NULL;
@@ -375,8 +470,8 @@ void setCatheterShaders()
     vertex_shader = glCreateShader(GL_VERTEX_SHADER);
     fragment_shader = glCreateShader(GL_FRAGMENT_SHADER);
     //read the shader files and store the strings in corresponding char. arrays.
-    vs = shaderFileRead("cathetershader.vert");
-    fs = shaderFileRead("cathetershader.frag");
+    vs = shaderFileRead("humanshader.vert");
+    fs = shaderFileRead("humanshader.frag");
 
     const char * vv = vs;
     const char * ff = fs;
@@ -395,7 +490,6 @@ void setCatheterShaders()
 
     //create an empty program object to attach the shader objects
     p = glCreateProgram();
-
 
     //attach the shader objects to the program object
     glAttachShader(p,vertex_shader);
@@ -460,6 +554,21 @@ void update_Light_Position()
 	glLightfv(GL_LIGHT0, GL_SPECULAR, specularColor);
 	glEnable(GL_LIGHTING);
 	glEnable(GL_LIGHT0);
+
+	GLfloat light_position2[] = { CameraRadius*cos(CameraTheta)*sin(CameraPhi)+5.1,			  
+			  CameraRadius*cos(CameraPhi)+0.1 , 
+			  CameraRadius*sin(CameraTheta)*sin(CameraPhi),0.0 };
+
+	glLightfv(GL_LIGHT1, GL_POSITION, light_position2);
+	GLfloat ambientColor1[] = {0.8863,0.7255,0.5608, 1.0};
+	GLfloat dissuseColor1[] = {0.8863,0.7255,0.5608,1.0};
+	GLfloat specularColor1[] = {0.8863,0.7255,0.5608,1.0};	
+	glLightfv(GL_LIGHT1, GL_AMBIENT, ambientColor1);
+	glLightfv(GL_LIGHT1, GL_DIFFUSE, dissuseColor1);
+	glLightfv(GL_LIGHT1, GL_SPECULAR, specularColor1);
+	glEnable(GL_LIGHTING);
+	glEnable(GL_LIGHT1);
+
 }
 
 //Sets the light positions, etc. parameters for the shaders
@@ -480,6 +589,11 @@ void setParameters(GLuint program)
 	if (locns == -1)
         std::cout << "Warning: can't find uniform variable ns_ !\n";
     glUniform1f(locns, ns_);
+
+	GLint localpha = glGetUniformLocation(program, "alpha_");
+	if (localpha == -1)
+        std::cout << "Warning: can't find uniform variable alpha_ !\n";
+    glUniform1f(localpha, alpha_);
 
 	GLint loc = glGetUniformLocation(program, "texture");
 
