@@ -13,6 +13,8 @@ Spring 2006
 #include <GL/glew.h>
 #include <GL/glut.h>
 
+#include <SOIL/SOIL.h> 
+
 # include "catheter_scene.h"
 #include "read_tga.h"
 # include "object.h"
@@ -71,18 +73,22 @@ point cross(point &p1, point &p2){
 }
 
 
-point textureCoordCylinder(point &v_, Object &mesh){
-	// compute v first: normalize to 0-1
+point textureCoordSphere(Object &mesh, point &v_){
 
+	// change center
 	point coord;
-	coord.y = (v_.y -  mesh.min_y) / mesh.obj_h; 
-	float delt_x = v_.x - mesh.obj_x;
-	float delt_z = v_.z - mesh.obj_z;
-	float theta_ = atan2(delt_z, delt_x); // from range (-pi , pi)
+	float delt_x = v_.x - mesh.tex_origin.x;
+	float delt_z = v_.z - mesh.tex_origin.z;
+	float theta_ = atan2(delt_z, delt_x);
 
 	coord.x = (theta_ + PI )/  (2 * PI);
- 
-	return coord;
+	float delt_y = v_.y - mesh.tex_origin.y;
+
+	float phi_ = atan2(sqrt(delt_x*delt_x + delt_z*delt_z), delt_y); // return (0, pi)
+	coord.y = phi_ / PI;
+
+	return  coord;
+
 }
 
 void renderFunction( Object &mesh){
@@ -122,15 +128,21 @@ void renderFunction( Object &mesh){
 void mappingFunction(Object &mesh, const char *fileName){
 
 	// Load image from tga file
-	TGA *TGAImage	= new TGA(fileName);
-	//TGA *TGAImage	= new TGA("./cubicenvironmentmap/cm_right.tga");
+	int width, height;
+	unsigned char* image = SOIL_load_image(fileName, &width, &height, 0, SOIL_LOAD_RGB);
 
-	// Use to dimensions of the image as the texture dimensions
-	uint width	= TGAImage->GetWidth();
-	uint height	= TGAImage->GetHeigth();
-	
+	// int width, height, nrChannels;
+	// unsigned char *data = stbi_load("container.jpg", &width, &height, &nrChannels, 0); 
+	// Load image from tga file
+	// TGA *TGAImage	= new TGA(fileName);
+	// //TGA *TGAImage	= new TGA("./cubicenvironmentmap/cm_right.tga");
+
+	// // Use to dimensions of the image as the texture dimensions
+	// uint width	= TGAImage->GetWidth();
+	// uint height	= TGAImage->GetHeigth();
+
 	// The parameters for actual textures are changed
-	glGenTextures(1, &id);
+	glGenTextures(0, &id);
 
 	glBindTexture(GL_TEXTURE_2D, id);
 
@@ -143,11 +155,12 @@ void mappingFunction(Object &mesh, const char *fileName){
 	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_NEAREST);
 
 	glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE);
-
+	glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
 	// Finaly build the mipmaps
-	glTexImage2D (GL_TEXTURE_2D, 0, 4, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, TGAImage->GetPixels());
 
-	gluBuild2DMipmaps(GL_TEXTURE_2D, 4, width, height, GL_RGBA, GL_UNSIGNED_BYTE, TGAImage->GetPixels());
+	glTexImage2D (GL_TEXTURE_2D, 0, 4, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, image);
+
+	gluBuild2DMipmaps(GL_TEXTURE_2D, 4, width, height, GL_RGB, GL_UNSIGNED_BYTE, image);
 
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
@@ -155,13 +168,26 @@ void mappingFunction(Object &mesh, const char *fileName){
 
 	glBindTexture (GL_TEXTURE_2D, id); 
 
-    delete TGAImage;
+	SOIL_free_image_data(image);
+
+	// Finaly build the mipmaps
+
+	// glTexImage2D (GL_TEXTURE_2D, 0, 4, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, TGAImage->GetPixels());
+
+	// gluBuild2DMipmaps(GL_TEXTURE_2D, 4, width, height, GL_RGBA, GL_UNSIGNED_BYTE, TGAImage->GetPixels());
+
+	// glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+
+	// glEnable( GL_TEXTURE_2D );
+
+	// glBindTexture (GL_TEXTURE_2D, id); 
+    // delete TGAImage;
 
 	for (int i = 0; i < mesh.faces; i++)
 	{
 
 		glBegin(GL_TRIANGLES);
-			point v1, v2, v3, n1, n2, n3, coord1,coord2, coord3;
+			point v1, v2, v3, n1, n2, n3, coord1, coord2, coord3, t1, t2, t3;
 			v1 = mesh.vertList[mesh.faceList[i].v1];
 			v2 = mesh.vertList[mesh.faceList[i].v2];
 			v3 = mesh.vertList[mesh.faceList[i].v3];
@@ -170,20 +196,28 @@ void mappingFunction(Object &mesh, const char *fileName){
 			n3 = mesh.normList[mesh.faceList[i].n3];
 
 
-			coord1 = textureCoordCylinder(v1, mesh);
-			coord2 = textureCoordCylinder(v2, mesh);
-			coord3 = textureCoordCylinder(v3, mesh);	
+			// coord1 = mesh.vertList[mesh.faceList[i].t1];
+			// coord2 = mesh.vertList[mesh.faceList[i].t2];
+			// coord3 = mesh.vertList[mesh.faceList[i].t3];	
+
+			// t1.x = coord1.x; t1.y = coord1.y;
+			// t2.x = coord2.x; t2.y = coord2.y;
+			// t3.x = coord3.x; t3.y = coord3.y;
+
+			t1 = textureCoordSphere(mesh, v1);
+			t2 = textureCoordSphere(mesh, v2);
+			t3 = textureCoordSphere(mesh, v3);		
 
 			glNormal3f(n1.x, n1.y, n1.z);
-			glTexCoord2f (coord1.x, coord1.y);
+			glTexCoord2f (t1.x, t1.y);
 			glVertex3f(v1.x, v1.y, v1.z);
 	
 			glNormal3f(n2.x, n2.y, n2.z);
-			glTexCoord2f (coord2.x, coord2.y);
+			glTexCoord2f (t2.x, t2.y);
 			glVertex3f(v2.x, v2.y, v2.z);
-				
+
 			glNormal3f(n3.x, n3.y, n3.z);
-			glTexCoord2f (coord3.x, coord3.y);
+			glTexCoord2f (t3.x, t3.y);
 			glVertex3f(v3.x, v3.y, v3.z);
 
 		glEnd();
@@ -217,18 +251,26 @@ void DisplayFunc(void)
 
 
     setHeartShaders();
-    Object heart("heart_cross_section.obj", 1, -100.0, 30.0, 0.0, 0.4, 1.0, -0.1, 0.5);
-    renderFunction(heart);
+    Object heart("heart_cross_section.obj", 1, -100.0, 30.0, 0.0, 0.4, 1.0, -0.1, 1.0);
+    // Object heart("test_sphere.obj", 1, 0.0, 0.0, 0.0, 0.4, 1.0, -0.1, 1.0);
+    const char *path1 = "t4.png";
+    mappingFunction(heart, path1);
 
-	glEnable(GL_BLEND);
-	glBlendFunc(GL_ONE_MINUS_SRC_ALPHA, GL_SRC_ALPHA);
-    setHumanShaders();
+    // setHeartShaders();
+    // Object vein("vein1.obj", 1, -100.0, 30.0, 0.0, 0.4, 0.6, -0.0, 1.1);
+    // const char *path2 = "blue.jpg";
+    // mappingFunction(vein, path2);
 
-    Object human("human_large.obj", 1, 0.0, 0.0, 0.0, 0.0, -14.5, 0.0, 4.5);
-    // const char *path1 = "skin.tga";
-   	renderFunction(human);
+// renderFunction(heart);
+	// glEnable(GL_BLEND);
+	// glBlendFunc(GL_ONE_MINUS_SRC_ALPHA, GL_SRC_ALPHA);
+ //    setHumanShaders();
 
-	glDisable(GL_BLEND);
+ //    Object human("human_large.obj", 1, 0.0, 0.0, 0.0, 0.0, -14.5, 0.0, 4.5);
+ //    // const char *path1 = "skin.tga";
+ //   	renderFunction(human);
+
+	// glDisable(GL_BLEND);
 
     // setCatheterShaders();
     // Object catheter("catheter_model.obj", 1, 90.0, 0.0, 0.0, 0.4, 0.0, 1.6, 20.0);
@@ -405,8 +447,8 @@ void setHeartShaders()
 	vertex_shader = glCreateShader(GL_VERTEX_SHADER);
 	fragment_shader = glCreateShader(GL_FRAGMENT_SHADER);
 	//read the shader files and store the strings in corresponding char. arrays.
-	vs = shaderFileRead("heartshader.vert");
-	fs = shaderFileRead("heartshader.frag");
+	vs = shaderFileRead("texture_shader.vert");
+	fs = shaderFileRead("texture_shader.frag");
 
 	const char * vv = vs;
 	const char * ff = fs;
@@ -574,14 +616,6 @@ void update_Light_Position()
 //Sets the light positions, etc. parameters for the shaders
 void setParameters(GLuint program)
 {
-	int light_loc;
-	int ambient_loc,diffuse_loc,specular_loc;
-	int exponent_loc;
-
-	//sample variable used to demonstrate how attributes are used in vertex shaders.
-	//can be defined as gloabal and can change per vertex
-	float tangent = 0.0;
-	float tangent_loc;
 
 	update_Light_Position();
 
@@ -595,10 +629,10 @@ void setParameters(GLuint program)
         std::cout << "Warning: can't find uniform variable alpha_ !\n";
     glUniform1f(localpha, alpha_);
 
-	GLint loc = glGetUniformLocation(program, "texture");
+	GLint loc = glGetUniformLocation(program, "texSampler");
 
 	if (loc == -1)
-        std::cout << "Warning: can't find uniform variable texture !\n";
+        std::cout << "Warning: can't find uniform variable texSampler !\n";
     glUniform1f(loc, id);
 }
 

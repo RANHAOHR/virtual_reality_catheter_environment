@@ -65,15 +65,8 @@ Object::Object(char* file, int sign, float rx, float ry, float rz, float tx, flo
 		vertList[i] =  Transform(ModelMatrix, vert_);
 	}
 
-	// for (int i = 5000; i < 6000; ++i)
-	// {
-	// 	point vert_ = vertList[i];
-	// 	vert_.x = vert_.x + 1;
-	// 	vert_.y = vert_.y + 1;
-	// 	vert_.z = vert_.z - 1;
-	// 	vertList[i] = vert_;
-	// }
-
+	point temp = Transform(ModelMatrix, tex_origin);
+	tex_origin = temp;
 
 	float *inverseTrans_ = inverseTransp(ModelMatrix); // if normal needs to be transformed
 
@@ -131,7 +124,8 @@ void Object::load(char* file, int sign)
 //	cout << "Number of faces: " << faces << endl;
 //	cout << "Number of VN: " << norms << endl;
 
-
+	max_x = max_y = max_z = -1000;
+	min_x = min_y = min_z = 1000;
 	// Load and create the faces and vertices
 	int CurrentVertex = 0, CurrentNormal = 0, CurrentTexture = 0, CurrentFace = 0;
 	while(!feof(pObjectFile))
@@ -179,25 +173,31 @@ void Object::load(char* file, int sign)
 			{
 				max_z = z;
 			}
-	    
 
-		    obj_h = max_y - min_y;
-		    obj_x = (max_x + min_x) /2;
-		    obj_z = (max_z + min_z) /2;
-		    obj_y = min_y;
-		    if( (max_x - min_x) > (max_z - min_z) ){
-		    	obj_r = (max_x - min_x);
-		    }else{
-		    	obj_r = (max_z - min_z);
-		    }
 
-			CurrentVertex++;
+	    tex_origin.x = (max_x + min_x) /2;
+	    tex_origin.z = (max_z + min_z) /2;
+		tex_origin.y = (max_y + min_y) / 2;
+	    if( (max_x - min_x) > (max_z - min_z) ){
+	    	if ( (max_x - min_x) > (max_y - min_y) )
+	    	{
+	    		obj_r = (max_x - min_x);
+	    	}else{obj_r = (max_y - min_y);}
+	    }else{
+	    	if ( (max_z - min_z) > (max_y - min_y) )
+	    	{
+	    		obj_r = (max_z - min_z);
+	    	}else{obj_r = (max_y - min_y);}
+
+	    }
+
+		CurrentVertex++;
 		}
 		else if(strcmp( DataType, "vt" ) == 0){
-			fscanf(pObjectFile, "%f %f %f\n", &x, &y, &z);
+			fscanf(pObjectFile, "%f %f\n", &x, &y);
 			textList[CurrentTexture].x = x;
 			textList[CurrentTexture].y = y;
-			textList[CurrentTexture].z = z;
+			textList[CurrentTexture].z = 0;
 			CurrentTexture++;
 		}
 		else if(strcmp( DataType, "vn" ) == 0){
