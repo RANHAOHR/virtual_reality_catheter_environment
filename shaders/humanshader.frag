@@ -3,7 +3,6 @@ uniform float ns_;
 uniform float alpha_;
 varying vec3 vertex_;
 varying vec3 normal_;
-uniform sampler2D texSampler;
 
 void main()
 {

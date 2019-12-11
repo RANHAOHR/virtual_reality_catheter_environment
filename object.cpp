@@ -348,3 +348,337 @@ void Object::LocalRotate(float rx, float ry, float rz)
 		ModelMatrix[7] = temp[7]*cosz - temp[3]*sinz;
 	}
 }
+
+
+/* Catheter object is not uploaded as an obj file */
+Catheter::Catheter(char* file, int sign, float rx, float ry, float rz, float tx, float ty, float tz, float s_)
+{
+	// Load the identity for the initial modeling matrix
+	ModelMatrix[0] = ModelMatrix[5] = ModelMatrix[10] = ModelMatrix[15] = 1;
+	ModelMatrix[1] = ModelMatrix[2] = ModelMatrix[3] = ModelMatrix[4] =
+		ModelMatrix[6] = ModelMatrix[7] = ModelMatrix[8] = ModelMatrix[9] =
+		ModelMatrix[11] = ModelMatrix[12] = ModelMatrix[13] = ModelMatrix[14]= 0;
+
+	// Apply the initial transformations in order
+	LocalScale(s_);
+	WorldRotate((float)(M_PI*rx/180.0), (float)(M_PI*ry/180.0), (float)(M_PI*rz/180.0));
+	WorldTranslate(tx, ty, tz);	
+
+	load(file, sign);
+
+	readParam("./models/catheter_param.txt");
+	
+	for (int i = 0; i < verts; ++i)
+	{
+		point vert_ = vertList[i];
+		vertList[i] =  Transform(ModelMatrix, vert_);
+	}
+
+	for (int i = 0; i < centers; ++i)
+	{
+		point vert_ = centList[i];
+		centList[i] =  Transform(ModelMatrix, vert_);
+	}
+
+	float *inverseTrans_ = inverseTransp(ModelMatrix); // if normal needs to be transformed
+
+	for (int i = 0; i < norms; ++i)
+	{
+		point norm_ = normList[i];
+		normList[i] =  Transform(inverseTrans_, norm_);
+	}
+
+}
+
+Catheter::~Catheter()
+{
+	delete [] vertList;
+	delete [] normList;
+	delete [] faceList;	
+	delete [] centList;
+}
+
+
+// Load an object (.obj) file
+void Catheter::load(char* file, int sign)
+{
+	FILE* pObjectFile = fopen(file, "r");
+	if(!pObjectFile)
+		cout << "Failed to load " << file << "." << endl;
+	else
+		cout << "Successfully loaded " << file << "." << endl;
+
+	char DataType[128];
+	float x, y, z;
+	unsigned int v1, v2, v3;
+	// Scan the file and count the faces and vertices
+	verts = faces = centers = 0;
+	while(!feof(pObjectFile))
+	{
+		fscanf(pObjectFile, "%s %f %f %f\n", &DataType, &x, &y, &z);
+		if(strcmp( DataType, "v" ) == 0)
+            verts++;
+		else if(strcmp( DataType, "c" ) == 0)
+			centers++;
+		else if(strcmp( DataType, "f" ) == 0)
+			faces++;
+	}
+	faceList = (faceStruct *)malloc(sizeof(faceStruct)*faces);
+	vertList = (point *)malloc(sizeof(point)*verts);
+	centList = (point *)malloc(sizeof(point)*centers);
+
+	fseek(pObjectFile, 0L, SEEK_SET);
+
+//	cout << "Number of vertices: " << verts << endl;
+//	cout << "Number of faces: " << faces << endl;
+//	cout << "Number of VN: " << norms << endl;
+
+	// Load and create the faces and vertices
+	int CurrentVertex = 0, CurrentCenter = 0, CurrentFace = 0;
+	while(!feof(pObjectFile))
+	{
+        int res = fscanf(pObjectFile, "%s", DataType);
+        if (res == EOF)
+            break; // EOF = End Of File. Quit the loop.
+
+		if(strcmp( DataType, "v" ) == 0)
+		{
+			fscanf(pObjectFile, "%f %f %f\n", &x, &y, &z);
+			vertList[CurrentVertex].x = x;
+			vertList[CurrentVertex].y = y;//+1;
+			vertList[CurrentVertex].z = z;//-3;
+			vertList[CurrentVertex].h = 1;
+
+			CurrentVertex++;
+		}
+		else if(strcmp( DataType, "c" ) == 0){
+			fscanf(pObjectFile, "%f %f %f\n", &x, &y, &z);
+			centList[CurrentCenter].x = x;
+			centList[CurrentCenter].y = y;
+			centList[CurrentCenter].z = z;
+			centList[CurrentCenter].h = 1;
+			CurrentCenter++;
+		}
+		else if(strcmp( DataType, "f" ) == 0)
+		{
+			fscanf(pObjectFile, "%d %d %d\n", &v1, &v2, &v3 );
+
+			// Convert to a zero-based index for convenience
+			faceList[CurrentFace].v1 = v1 - 1;
+			faceList[CurrentFace].v2 = v2 - 1;
+			faceList[CurrentFace].v3 = v3 - 1;
+
+			faceList[CurrentFace].n1 = v1 - 1;
+			faceList[CurrentFace].n2 = v2 - 1;
+			faceList[CurrentFace].n3 = v3 - 1;
+
+			CurrentFace++;
+		}
+	}
+
+	int *normCount;
+	point v_1,v_2,crossP;
+	float len;
+  // The part below calculates the normals of each vertex
+	normCount = (int *)malloc(sizeof(int)*verts);
+	normList = (point *)malloc(sizeof(point)*verts);
+
+	for (int i = 0;i < verts;i++)
+    {
+      normList[i].x = normList[i].y = normList[i].z = normList[i].h = 0.0;
+      normCount[i] = 0;
+    }
+
+	for(int i = 0; i < faces;i++)
+    {
+      v_1.x = vertList[faceList[i].v2].x - vertList[faceList[i].v1].x;
+
+      v_1.y = vertList[faceList[i].v2].y - vertList[faceList[i].v1].y;
+      v_1.z = vertList[faceList[i].v2].z - vertList[faceList[i].v1].z;
+      v_2.x = vertList[faceList[i].v3].x - vertList[faceList[i].v2].x;
+      v_2.y = vertList[faceList[i].v3].y - vertList[faceList[i].v2].y;
+      v_2.z = vertList[faceList[i].v3].z - vertList[faceList[i].v2].z;
+
+      crossP.x = v_1.y*v_2.z - v_1.z*v_2.y;
+      crossP.y = v_1.z*v_2.x - v_1.x*v_2.z;
+      crossP.z = v_1.x*v_2.y - v_1.y*v_2.x;
+
+      len = sqrt(crossP.x*crossP.x + crossP.y*crossP.y + crossP.z*crossP.z);
+
+      crossP.x = -crossP.x/len;
+      crossP.y = -crossP.y/len;
+      crossP.z = -crossP.z/len;
+
+      normList[faceList[i].n1].x = normList[faceList[i].n1].x + crossP.x;
+      normList[faceList[i].n1].y = normList[faceList[i].n1].y + crossP.y;
+      normList[faceList[i].n1].z = normList[faceList[i].n1].z + crossP.z;
+      normList[faceList[i].n2].x = normList[faceList[i].n2].x + crossP.x;
+      normList[faceList[i].n2].y = normList[faceList[i].n2].y + crossP.y;
+      normList[faceList[i].n2].z = normList[faceList[i].n2].z + crossP.z;
+      normList[faceList[i].n3].x = normList[faceList[i].n3].x + crossP.x;
+      normList[faceList[i].n3].y = normList[faceList[i].n3].y + crossP.y;
+      normList[faceList[i].n3].z = normList[faceList[i].n3].z + crossP.z;
+      normCount[faceList[i].n1]++;
+      normCount[faceList[i].n2]++;
+      normCount[faceList[i].n3]++;
+    }
+
+	for (int i = 0;i < verts;i++)
+    {
+      normList[i].x = (float)sign*normList[i].x / (float)normCount[i];
+      normList[i].y = (float)sign*normList[i].y / (float)normCount[i];
+      normList[i].z = (float)sign*normList[i].z / (float)normCount[i];
+    }
+
+    norms = verts;
+
+}
+
+void Catheter::readParam(char* file){
+		FILE* pObjectFile = fopen(file, "r");
+	if(!pObjectFile)
+		cout << "Failed to load " << file << "." << endl;
+	else
+		cout << "Successfully loaded " << file << "." << endl;
+
+	char DataType[128];
+	int data; 
+	while(!feof(pObjectFile))
+	{
+		fscanf(pObjectFile, "%s %d\n", &DataType, &data);
+		if(strcmp( DataType, "Npoints" ) == 0)
+            NdiskPts = data;
+		else if(strcmp( DataType, "Nlength" ) == 0)
+			Nlength = data;
+	}
+
+}
+
+// Do world-based translation
+void Catheter::WorldTranslate(float tx, float ty, float tz)
+{
+	ModelMatrix[12] += tx;
+	ModelMatrix[13] += ty;
+	ModelMatrix[14] += tz;
+}
+
+// Perform world-based rotations in x,y,z order (intended for one-at-a-time use)
+void Catheter::WorldRotate(float rx, float ry, float rz)
+{
+	float temp[16];
+
+	if(rx != 0)
+	{
+		float cosx = cos(rx), sinx = sin(rx);
+		for(int i = 0; i < 16; i++)
+			temp[i] = ModelMatrix[i];
+		ModelMatrix[1] = temp[1]*cosx - temp[2]*sinx;
+		ModelMatrix[2] = temp[2]*cosx + temp[1]*sinx;
+		ModelMatrix[5] = temp[5]*cosx - temp[6]*sinx;
+		ModelMatrix[6] = temp[6]*cosx + temp[5]*sinx;
+		ModelMatrix[9] = temp[9]*cosx - temp[10]*sinx;
+		ModelMatrix[10] = temp[10]*cosx + temp[9]*sinx;
+		ModelMatrix[13] = temp[13]*cosx - temp[14]*sinx;
+		ModelMatrix[14] = temp[14]*cosx + temp[13]*sinx;
+	}
+
+	if(ry != 0)
+	{
+		float cosy = cos(ry), siny = sin(ry);
+		for(int i = 0; i < 16; i++)
+			temp[i] = ModelMatrix[i];
+		ModelMatrix[0] = temp[0]*cosy + temp[2]*siny;
+		ModelMatrix[2] = temp[2]*cosy - temp[0]*siny;
+		ModelMatrix[4] = temp[4]*cosy + temp[6]*siny;
+		ModelMatrix[6] = temp[6]*cosy - temp[4]*siny;
+		ModelMatrix[8] = temp[8]*cosy + temp[10]*siny;
+		ModelMatrix[10] = temp[10]*cosy - temp[8]*siny;
+		ModelMatrix[12] = temp[12]*cosy + temp[14]*siny;
+		ModelMatrix[14] = temp[14]*cosy - temp[12]*siny;
+	}
+
+	if(rz != 0)
+	{
+		float cosz = cos(rz), sinz = sin(rz);
+		for(int i = 0; i < 16; i++)
+			temp[i] = ModelMatrix[i];
+		ModelMatrix[0] = temp[0]*cosz - temp[1]*sinz;
+		ModelMatrix[1] = temp[1]*cosz + temp[0]*sinz;
+		ModelMatrix[4] = temp[4]*cosz - temp[5]*sinz;
+		ModelMatrix[5] = temp[5]*cosz + temp[4]*sinz;
+		ModelMatrix[8] = temp[8]*cosz - temp[9]*sinz;
+		ModelMatrix[9] = temp[9]*cosz + temp[8]*sinz;
+		ModelMatrix[12] = temp[12]*cosz - temp[13]*sinz;
+		ModelMatrix[13] = temp[13]*cosz + temp[12]*sinz;
+	}
+}
+
+void Catheter::LocalScale(float s)
+{
+	ModelMatrix[0] = s*ModelMatrix[0];
+	ModelMatrix[5] = s*ModelMatrix[5];
+	ModelMatrix[10] = s*ModelMatrix[10];
+}
+
+// Perform locally-based rotations in x,y,z order (intended for one-at-a-time use)
+void Catheter::LocalRotate(float rx, float ry, float rz)
+{
+	float temp[16];
+
+	if(rx != 0)
+	{
+		float cosx = cos(rx), sinx = sin(rx);
+		for(int i = 0; i < 16; i++)
+			temp[i] = ModelMatrix[i];
+		ModelMatrix[4] = temp[4]*cosx + temp[8]*sinx;
+		ModelMatrix[5] = temp[5]*cosx + temp[9]*sinx;
+		ModelMatrix[6] = temp[6]*cosx + temp[10]*sinx;
+		ModelMatrix[7] = temp[7]*cosx + temp[11]*sinx;
+		ModelMatrix[8] = temp[8]*cosx - temp[4]*sinx;
+		ModelMatrix[9] = temp[9]*cosx - temp[5]*sinx;
+		ModelMatrix[10] = temp[10]*cosx - temp[6]*sinx;
+		ModelMatrix[11] = temp[11]*cosx - temp[7]*sinx;
+	}
+
+	if(ry != 0)
+	{
+        float cosy = cos(ry), siny = sin(ry);
+		for(int i = 0; i < 16; i++)
+			temp[i] = ModelMatrix[i];
+		ModelMatrix[0] = temp[0]*cosy - temp[8]*siny;
+		ModelMatrix[1] = temp[1]*cosy - temp[9]*siny;
+		ModelMatrix[2] = temp[2]*cosy - temp[10]*siny;
+		ModelMatrix[3] = temp[3]*cosy - temp[11]*siny;
+		ModelMatrix[8] = temp[8]*cosy + temp[0]*siny;
+		ModelMatrix[9] = temp[9]*cosy + temp[1]*siny;
+		ModelMatrix[10] = temp[10]*cosy + temp[2]*siny;
+		ModelMatrix[11] = temp[11]*cosy + temp[3]*siny;
+	}
+
+	if(rz != 0)
+	{
+		float cosz = cos(rz), sinz = sin(rz);
+		for(int i = 0; i < 16; i++)
+			temp[i] = ModelMatrix[i];
+		ModelMatrix[0] = temp[0]*cosz + temp[4]*sinz;
+		ModelMatrix[1] = temp[1]*cosz + temp[5]*sinz;
+		ModelMatrix[2] = temp[2]*cosz + temp[6]*sinz;
+		ModelMatrix[3] = temp[3]*cosz + temp[7]*sinz;
+		ModelMatrix[4] = temp[4]*cosz - temp[0]*sinz;
+		ModelMatrix[5] = temp[5]*cosz - temp[1]*sinz;
+		ModelMatrix[6] = temp[6]*cosz - temp[2]*sinz;
+		ModelMatrix[7] = temp[7]*cosz - temp[3]*sinz;
+	}
+}
+
+
+
+
+
+
+
+
+
+
+
+

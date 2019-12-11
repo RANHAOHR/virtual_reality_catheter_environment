@@ -34,5 +34,27 @@ public:
 	float obj_r;
 	point tex_origin;
 };
+
+class Catheter
+{
+public:
+	Catheter(char* file, int sign, float rx, float ry, float rz, float tx, float ty, float tz, float s_);
+	~Catheter();
+	void load(char* file, int sign);
+	void readParam(char* file);
+	void WorldTranslate(float tx, float ty, float tz);
+	void WorldRotate(float rx, float ry, float rz);
+	void LocalRotate(float rx, float ry, float rz);
+	void LocalScale(float s);
+
+	int Nlength;
+	int NdiskPts;
+
+	int verts, faces, norms, centers;    // Number of vertices, faces and normals in the system
+	point *vertList, *normList, *centList; // Vertex and Normal Lists
+	faceStruct *faceList;	    // Face List
+	float ModelMatrix[16];
+};
+
 point Transform(float* matrix, point& point);
 float* inverseTransp(float* matrix);

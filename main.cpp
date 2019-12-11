@@ -16,7 +16,6 @@ Spring 2006
 #include <SOIL/SOIL.h> 
 
 # include "catheter_scene.h"
-#include "read_tga.h"
 # include "object.h"
 
 #define PI 3.14159265359
@@ -24,8 +23,6 @@ Spring 2006
 #define PrintOpenGLError()::PrintOGLError(__FILE__, __LINE__)
 
 using namespace std;
-
-
 //Illimunation and shading related declerations
 char *shaderFileRead(char *fn);
 
@@ -45,9 +42,12 @@ GLfloat ns_ = 5000;
 int Ntex = 5;
 GLuint *textures = new GLuint[Ntex];
 
+// catheter params
+int cur_length = 0;
+int catheter_length = 0;
+bool showCatheter = false;
 //Projection, camera contral related declerations
 int WindowWidth,WindowHeight;
-
 
 float CameraRadius = 10;
 float CameraTheta = PI / 2;
@@ -73,7 +73,6 @@ point cross(point &p1, point &p2){
 	return res;
 
 }
-
 
 point textureCoordSphere(Object &mesh, point &v_){
 
@@ -123,20 +122,18 @@ void renderFunction( Object &mesh){
 
 	}	
 
-
 }
 
+void textureMapping(int ind, const char *path){
 
-void mappingFunction(Object &mesh){
-
-	// Load image from tga file
+	// Load images
 	int width, height;
-	unsigned char* blendmap = SOIL_load_image("blend.png", &width, &height, 0, SOIL_LOAD_RGB);
+	unsigned char* texture_map = SOIL_load_image(path, &width, &height, 0, SOIL_LOAD_RGB);
 
 	glGenTextures(Ntex, textures);
 
-	glActiveTexture(GL_TEXTURE0);
-	glBindTexture (GL_TEXTURE_2D, textures[0]);
+	glActiveTexture(GL_TEXTURE0 + ind);
+	glBindTexture (GL_TEXTURE_2D, textures[ind]);
 
 	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
 	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
@@ -146,102 +143,30 @@ void mappingFunction(Object &mesh){
 	glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE);
 	glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
 	// Finaly build the mipmaps
-	glTexImage2D (GL_TEXTURE_2D, 0, 4, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, blendmap);
-	gluBuild2DMipmaps(GL_TEXTURE_2D, 4, width, height, GL_RGB, GL_UNSIGNED_BYTE, blendmap);
+	glTexImage2D (GL_TEXTURE_2D, 0, 4, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, texture_map);
+	gluBuild2DMipmaps(GL_TEXTURE_2D, 4, width, height, GL_RGB, GL_UNSIGNED_BYTE, texture_map);
 
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
-	// glEnable( GL_TEXTURE_2D );
+	SOIL_free_image_data(texture_map);
+}
 
-	SOIL_free_image_data(blendmap);
+void mappingFunction(Object &mesh){
 
-	unsigned char* redmap = SOIL_load_image("aortic_color.jpg", &width, &height, 0, SOIL_LOAD_RGB);
+    const char *blendmap = "./texture_images/blend.png";
+    textureMapping(0, blendmap);
 
-	glActiveTexture(GL_TEXTURE1);
-	glBindTexture (GL_TEXTURE_2D, textures[1]); 
+    const char *aorticmap = "./texture_images/aortic_color.jpg";
+    textureMapping(1, aorticmap);
 
-	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_NEAREST);
+    const char *pulmonarymap = "./texture_images/pulmonary_color.jpg";
+    textureMapping(2, pulmonarymap);
 
-	glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE);
-	glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-	// Finaly build the mipmaps
-	glTexImage2D (GL_TEXTURE_2D, 0, 4, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, redmap);
-	gluBuild2DMipmaps(GL_TEXTURE_2D, 4, width, height, GL_RGB, GL_UNSIGNED_BYTE, redmap);
+    const char *musclemap = "./texture_images/heart_muscle.png";
+    textureMapping(3, musclemap);  
 
-	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-
-	SOIL_free_image_data(redmap);
-
-
-	glActiveTexture(GL_TEXTURE2);
-	glBindTexture (GL_TEXTURE_2D, textures[2]); 
-
-	unsigned char* bluemap = SOIL_load_image("pulmonary_color.jpg", &width, &height, 0, SOIL_LOAD_RGB);
-
-	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_NEAREST);
-
-	glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE);
-	glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-	// Finaly build the mipmaps
-	glTexImage2D (GL_TEXTURE_2D, 0, 4, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, bluemap);
-	gluBuild2DMipmaps(GL_TEXTURE_2D, 4, width, height, GL_RGB, GL_UNSIGNED_BYTE, bluemap);
-
-	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-
-	glEnable( GL_TEXTURE_2D );
-
-
-
-	SOIL_free_image_data(bluemap);
-
-
-	glActiveTexture(GL_TEXTURE3);
-	glBindTexture (GL_TEXTURE_2D, textures[3]); 
-
-	unsigned char* muscle_map = SOIL_load_image("heart_muscle.png", &width, &height, 0, SOIL_LOAD_RGB);
-
-	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_NEAREST);
-
-	glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE);
-	glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-	// Finaly build the mipmaps
-	glTexImage2D (GL_TEXTURE_2D, 0, 4, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, muscle_map);
-	gluBuild2DMipmaps(GL_TEXTURE_2D, 4, width, height, GL_RGB, GL_UNSIGNED_BYTE, muscle_map);
-
-	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-
-	glEnable( GL_TEXTURE_2D );
-
-	SOIL_free_image_data(muscle_map);
-
-	unsigned char* backgroundmap = SOIL_load_image("background.jpg", &width, &height, 0, SOIL_LOAD_RGB);
-
-	glActiveTexture(GL_TEXTURE4);
-	glBindTexture (GL_TEXTURE_2D, textures[4]); 
-
-	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_NEAREST);
-
-	glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE);
-	glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-	// Finaly build the mipmaps
-	glTexImage2D (GL_TEXTURE_2D, 0, 4, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, backgroundmap);
-	gluBuild2DMipmaps(GL_TEXTURE_2D, 4, width, height, GL_RGB, GL_UNSIGNED_BYTE, backgroundmap);
-
-	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-
-	SOIL_free_image_data(backgroundmap);
+    const char *backgroundmap = "./texture_images/background.jpg";
+    textureMapping(4, backgroundmap); 
 
 	for (int i = 0; i < mesh.faces; i++)
 	{
@@ -278,6 +203,35 @@ void mappingFunction(Object &mesh){
 }
 
 
+void renderCatheter( Catheter &mesh){
+
+	for (int i = 0; i < cur_length * (mesh.NdiskPts - 1 ) * 2; i++)
+	{
+
+		glBegin(GL_TRIANGLES);
+			point v1, v2, v3, n1, n2, n3;
+			v1 = mesh.vertList[mesh.faceList[i].v1];
+			v2 = mesh.vertList[mesh.faceList[i].v2];
+			v3 = mesh.vertList[mesh.faceList[i].v3];
+			n1 = mesh.normList[mesh.faceList[i].n1];
+			n2 = mesh.normList[mesh.faceList[i].n2];
+			n3 = mesh.normList[mesh.faceList[i].n3];
+
+			glNormal3f(n1.x, n1.y, n1.z);
+			glVertex3f(v1.x, v1.y, v1.z);
+	
+			glNormal3f(n2.x, n2.y, n2.z);
+			glVertex3f(v2.x, v2.y, v2.z);
+				
+			glNormal3f(n3.x, n3.y, n3.z);
+			glVertex3f(v3.x, v3.y, v3.z);
+
+		glEnd();
+
+	}	
+
+}
+
 void DisplayFunc(void) 
 {
 
@@ -302,22 +256,26 @@ void DisplayFunc(void)
 
 
     setHeartShaders();
-    Object heart("heart_cross_section.obj", 1, -100.0, 30.0, 0.0, 0.4, 1.0, -0.1, 0.5);
+    Object heart("./models/heart_cross_section.obj", 1, -100.0, 30.0, 0.0, 0.4, 1.0, -0.1, 0.5);
     mappingFunction(heart);
 
+    if (showCatheter)
+    {
+	    setCatheterShaders();
+	    Catheter catheter_model("./models/catheter.obj", 1, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0);
+	    catheter_length = catheter_model.Nlength;
+	    renderCatheter(catheter_model);   
+    }
 
 	glEnable(GL_BLEND);
 	glBlendFunc(GL_ONE_MINUS_SRC_ALPHA, GL_SRC_ALPHA);
     setHumanShaders();
 
-    Object human("human_large.obj", 1, 0.0, 0.0, 0.0, 0.0, -14.5, 0.0, 4.5);
+    Object human("./models/human_large.obj", 1, 0.0, 0.0, 0.0, 0.0, -14.5, 0.0, 4.5);
    	renderFunction(human);
 
 	glDisable(GL_BLEND);
 
-    // setCatheterShaders();
-    // Object catheter("catheter_model.obj", 1, 90.0, 0.0, 0.0, 0.4, 0.0, 1.6, 20.0);
-    // mappingFunction(catheter);
 
 	glutSwapBuffers();
 }
@@ -385,15 +343,16 @@ void KeyboardFunc(unsigned char key, int x, int y)
 			illimunationMode = 0;
 		}
 		break;
+	case 'a':
+	case 'A':
+		showCatheter = !showCatheter;
+		break;
 	case 'e':
 	case 'E':
-		if (shadingMode == 0)
+		cur_length +=1;
+		if (cur_length > catheter_length)
 		{
-			shadingMode =1;
-		}
-		else
-		{
-			shadingMode =0;
+			cur_length = catheter_length;
 		}
 		break;
 	case 'd':
@@ -435,7 +394,6 @@ int main(int argc, char **argv)
     glutMotionFunc(MotionFunc);
     glutKeyboardFunc(KeyboardFunc);
 
-//	setShaders();
 	glutMainLoop();
 
 	return 0;
@@ -446,7 +404,6 @@ Shader related methods,
 Setting the shader files
 Setting the shader variables
 *************************************************************/
-
 void error_exit(int status, char *text)
 {
 
@@ -490,8 +447,8 @@ void setHeartShaders()
 	vertex_shader = glCreateShader(GL_VERTEX_SHADER);
 	fragment_shader = glCreateShader(GL_FRAGMENT_SHADER);
 	//read the shader files and store the strings in corresponding char. arrays.
-	vs = shaderFileRead("texture_shader.vert");
-	fs = shaderFileRead("texture_shader.frag");
+	vs = shaderFileRead("./shaders/texture_shader.vert");
+	fs = shaderFileRead("./shaders/texture_shader.frag");
 
 	const char * vv = vs;
 	const char * ff = fs;
@@ -555,8 +512,8 @@ void setHumanShaders()
     vertex_shader = glCreateShader(GL_VERTEX_SHADER);
     fragment_shader = glCreateShader(GL_FRAGMENT_SHADER);
     //read the shader files and store the strings in corresponding char. arrays.
-    vs = shaderFileRead("humanshader.vert");
-    fs = shaderFileRead("humanshader.frag");
+    vs = shaderFileRead("./shaders/humanshader.vert");
+    fs = shaderFileRead("./shaders/humanshader.frag");
 
     const char * vv = vs;
     const char * ff = fs;
@@ -608,6 +565,66 @@ void setHumanShaders()
 
 }
 
+void setCatheterShaders()
+{
+    glewInit();
+    char *vs = NULL,*fs = NULL;
+
+    //create the empty shader objects and get their handles
+    vertex_shader = glCreateShader(GL_VERTEX_SHADER);
+    fragment_shader = glCreateShader(GL_FRAGMENT_SHADER);
+    //read the shader files and store the strings in corresponding char. arrays.
+    vs = shaderFileRead("./shaders/cathetershader.vert");
+    fs = shaderFileRead("./shaders/cathetershader.frag");
+
+    const char * vv = vs;
+    const char * ff = fs;
+
+    //set the shader's source code by using the strings read from the shader files.
+    glShaderSource(vertex_shader, 1, &vv,NULL);
+    glShaderSource(fragment_shader, 1, &ff,NULL);
+
+    free(vs);free(fs);
+
+    //Compile the shader objects
+    glCompileShader(vertex_shader);
+    glCompileShader(fragment_shader);
+
+    //create an empty program object to attach the shader objects
+    p = glCreateProgram();
+
+    //attach the shader objects to the program object
+    glAttachShader(p,vertex_shader);
+    glAttachShader(p,fragment_shader);
+    // define unifrom variables
+
+    /*
+    **************
+    Programming Tip:
+    ***************
+    Delete the attached shader objects once they are attached.
+    They will be flagged for removal and will be freed when they are no more used.
+    */
+    glDeleteShader(vertex_shader);
+    glDeleteShader(fragment_shader);
+
+    //Link the created program.
+    /*
+    **************
+    Programming Tip:
+    ***************
+    You can trace the status of link operation by calling
+    "glGetObjectParameterARB(p,GL_OBJECT_LINK_STATUS_ARB)"
+    */
+    glLinkProgram(p);
+
+    //Start to use the program object, which is the part of the current rendering state
+    glUseProgram(p);
+
+    setCatheterParameters(p);
+
+}
+
 //Gets the location of the uniform variable given with "name" in the memory
 //and tests whether the process was successfull.
 //Returns the location of the queried uniform variable
@@ -632,8 +649,8 @@ void update_Light_Position()
 			  CameraRadius*sin(CameraTheta)*sin(CameraPhi),0.0 };
 	glLightfv(GL_LIGHT0, GL_POSITION, light_position);
 	GLfloat ambientColor[] = {1.0,1.0,1.0,1.0};
-	GLfloat dissuseColor[] = {0.0,1.0,1.0,1.0};
-	GLfloat specularColor[] = {0.0,1.0,1.0,1.0};	
+	GLfloat dissuseColor[] = {1.0,1.0,1.0,1.0};
+	GLfloat specularColor[] = {1.0,1.0,1.0,1.0};	
 	glLightfv(GL_LIGHT0, GL_AMBIENT, ambientColor);
 	glLightfv(GL_LIGHT0, GL_DIFFUSE, dissuseColor);
 	glLightfv(GL_LIGHT0, GL_SPECULAR, specularColor);
@@ -654,6 +671,15 @@ void update_Light_Position()
 	glEnable(GL_LIGHTING);
 	glEnable(GL_LIGHT1);
 
+	glLightfv(GL_LIGHT2, GL_POSITION, light_position);
+	GLfloat ambientColor2[] = {1.0,1.0,1.0,1.0};
+	GLfloat dissuseColor2[] = {0.0,1.0,1.0,1.0};
+	GLfloat specularColor2[] = {0.0,1.0,1.0,1.0};	
+	glLightfv(GL_LIGHT2, GL_AMBIENT, ambientColor2);
+	glLightfv(GL_LIGHT2, GL_DIFFUSE, dissuseColor2);
+	glLightfv(GL_LIGHT2, GL_SPECULAR, specularColor2);
+	glEnable(GL_LIGHTING);
+	glEnable(GL_LIGHT2);
 }
 
 //Sets the light positions, etc. parameters for the shaders
@@ -710,6 +736,19 @@ void setHumanParameters(GLuint program)
     glUniform1f(localpha, alpha_);
 
 }
+
+void setCatheterParameters(GLuint program)
+{
+
+	update_Light_Position();
+
+	GLint locns = glGetUniformLocation(program, "ns_");
+	if (locns == -1)
+        std::cout << "Warning: can't find uniform variable ns_ !\n";
+    glUniform1f(locns, ns_);
+
+}
+
 /****************************************************************
 Utility methods:
 shader file reader
