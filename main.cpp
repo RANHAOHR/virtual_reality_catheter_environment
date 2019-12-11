@@ -34,7 +34,7 @@ int illimunationMode = 0;
 int shadingMode = 0;
 int lightSource = 0;
 int program=-1;
-GLuint id;
+
 float alpha_ = 0.0;
 //Parameters for Copper (From: "Computer Graphics Using OpenGL" BY F.S. Hill, Jr.) 
 GLfloat ambient_cont [] = {0.19125,0.0735,0.0225};
@@ -42,6 +42,8 @@ GLfloat diffuse_cont [] = {0.7038,0.27048,0.0828};
 GLfloat specular_cont [] = {0.256777,0.137622,0.086014};
 GLfloat ns_ = 5000;
 
+int Ntex = 5;
+GLuint *textures = new GLuint[Ntex];
 
 //Projection, camera contral related declerations
 int WindowWidth,WindowHeight;
@@ -125,63 +127,121 @@ void renderFunction( Object &mesh){
 }
 
 
-void mappingFunction(Object &mesh, const char *fileName){
+void mappingFunction(Object &mesh){
 
 	// Load image from tga file
 	int width, height;
-	unsigned char* image = SOIL_load_image(fileName, &width, &height, 0, SOIL_LOAD_RGB);
+	unsigned char* blendmap = SOIL_load_image("blend.png", &width, &height, 0, SOIL_LOAD_RGB);
 
-	// int width, height, nrChannels;
-	// unsigned char *data = stbi_load("container.jpg", &width, &height, &nrChannels, 0); 
-	// Load image from tga file
-	// TGA *TGAImage	= new TGA(fileName);
-	// //TGA *TGAImage	= new TGA("./cubicenvironmentmap/cm_right.tga");
+	glGenTextures(Ntex, textures);
 
-	// // Use to dimensions of the image as the texture dimensions
-	// uint width	= TGAImage->GetWidth();
-	// uint height	= TGAImage->GetHeigth();
-
-	// The parameters for actual textures are changed
-	glGenTextures(0, &id);
-
-	glBindTexture(GL_TEXTURE_2D, id);
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture (GL_TEXTURE_2D, textures[0]);
 
 	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-
 	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-
 	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-
 	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_NEAREST);
 
 	glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE);
 	glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
 	// Finaly build the mipmaps
+	glTexImage2D (GL_TEXTURE_2D, 0, 4, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, blendmap);
+	gluBuild2DMipmaps(GL_TEXTURE_2D, 4, width, height, GL_RGB, GL_UNSIGNED_BYTE, blendmap);
 
-	glTexImage2D (GL_TEXTURE_2D, 0, 4, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, image);
+	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
-	gluBuild2DMipmaps(GL_TEXTURE_2D, 4, width, height, GL_RGB, GL_UNSIGNED_BYTE, image);
+	// glEnable( GL_TEXTURE_2D );
+
+	SOIL_free_image_data(blendmap);
+
+	unsigned char* redmap = SOIL_load_image("aortic_color.jpg", &width, &height, 0, SOIL_LOAD_RGB);
+
+	glActiveTexture(GL_TEXTURE1);
+	glBindTexture (GL_TEXTURE_2D, textures[1]); 
+
+	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_NEAREST);
+
+	glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE);
+	glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+	// Finaly build the mipmaps
+	glTexImage2D (GL_TEXTURE_2D, 0, 4, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, redmap);
+	gluBuild2DMipmaps(GL_TEXTURE_2D, 4, width, height, GL_RGB, GL_UNSIGNED_BYTE, redmap);
+
+	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+
+	SOIL_free_image_data(redmap);
+
+
+	glActiveTexture(GL_TEXTURE2);
+	glBindTexture (GL_TEXTURE_2D, textures[2]); 
+
+	unsigned char* bluemap = SOIL_load_image("pulmonary_color.jpg", &width, &height, 0, SOIL_LOAD_RGB);
+
+	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_NEAREST);
+
+	glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE);
+	glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+	// Finaly build the mipmaps
+	glTexImage2D (GL_TEXTURE_2D, 0, 4, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, bluemap);
+	gluBuild2DMipmaps(GL_TEXTURE_2D, 4, width, height, GL_RGB, GL_UNSIGNED_BYTE, bluemap);
 
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
 	glEnable( GL_TEXTURE_2D );
 
-	glBindTexture (GL_TEXTURE_2D, id); 
 
-	SOIL_free_image_data(image);
 
+	SOIL_free_image_data(bluemap);
+
+
+	glActiveTexture(GL_TEXTURE3);
+	glBindTexture (GL_TEXTURE_2D, textures[3]); 
+
+	unsigned char* muscle_map = SOIL_load_image("heart_muscle.png", &width, &height, 0, SOIL_LOAD_RGB);
+
+	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_NEAREST);
+
+	glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE);
+	glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
 	// Finaly build the mipmaps
+	glTexImage2D (GL_TEXTURE_2D, 0, 4, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, muscle_map);
+	gluBuild2DMipmaps(GL_TEXTURE_2D, 4, width, height, GL_RGB, GL_UNSIGNED_BYTE, muscle_map);
 
-	// glTexImage2D (GL_TEXTURE_2D, 0, 4, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, TGAImage->GetPixels());
+	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
-	// gluBuild2DMipmaps(GL_TEXTURE_2D, 4, width, height, GL_RGBA, GL_UNSIGNED_BYTE, TGAImage->GetPixels());
+	glEnable( GL_TEXTURE_2D );
 
-	// glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+	SOIL_free_image_data(muscle_map);
 
-	// glEnable( GL_TEXTURE_2D );
+	unsigned char* backgroundmap = SOIL_load_image("background.jpg", &width, &height, 0, SOIL_LOAD_RGB);
 
-	// glBindTexture (GL_TEXTURE_2D, id); 
-    // delete TGAImage;
+	glActiveTexture(GL_TEXTURE4);
+	glBindTexture (GL_TEXTURE_2D, textures[4]); 
+
+	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_NEAREST);
+
+	glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE);
+	glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+	// Finaly build the mipmaps
+	glTexImage2D (GL_TEXTURE_2D, 0, 4, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, backgroundmap);
+	gluBuild2DMipmaps(GL_TEXTURE_2D, 4, width, height, GL_RGB, GL_UNSIGNED_BYTE, backgroundmap);
+
+	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+
+	SOIL_free_image_data(backgroundmap);
 
 	for (int i = 0; i < mesh.faces; i++)
 	{
@@ -194,15 +254,6 @@ void mappingFunction(Object &mesh, const char *fileName){
 			n1 = mesh.normList[mesh.faceList[i].n1];
 			n2 = mesh.normList[mesh.faceList[i].n2];
 			n3 = mesh.normList[mesh.faceList[i].n3];
-
-
-			// coord1 = mesh.vertList[mesh.faceList[i].t1];
-			// coord2 = mesh.vertList[mesh.faceList[i].t2];
-			// coord3 = mesh.vertList[mesh.faceList[i].t3];	
-
-			// t1.x = coord1.x; t1.y = coord1.y;
-			// t2.x = coord2.x; t2.y = coord2.y;
-			// t3.x = coord3.x; t3.y = coord3.y;
 
 			t1 = textureCoordSphere(mesh, v1);
 			t2 = textureCoordSphere(mesh, v2);
@@ -251,26 +302,19 @@ void DisplayFunc(void)
 
 
     setHeartShaders();
-    Object heart("heart_cross_section.obj", 1, -100.0, 30.0, 0.0, 0.4, 1.0, -0.1, 1.0);
-    // Object heart("test_sphere.obj", 1, 0.0, 0.0, 0.0, 0.4, 1.0, -0.1, 1.0);
-    const char *path1 = "t4.png";
-    mappingFunction(heart, path1);
+    Object heart("heart_cross_section.obj", 1, -100.0, 30.0, 0.0, 0.4, 1.0, -0.1, 0.5);
+    mappingFunction(heart);
 
-    // setHeartShaders();
-    // Object vein("vein1.obj", 1, -100.0, 30.0, 0.0, 0.4, 0.6, -0.0, 1.1);
-    // const char *path2 = "blue.jpg";
-    // mappingFunction(vein, path2);
 
-// renderFunction(heart);
-	// glEnable(GL_BLEND);
-	// glBlendFunc(GL_ONE_MINUS_SRC_ALPHA, GL_SRC_ALPHA);
- //    setHumanShaders();
+	glEnable(GL_BLEND);
+	glBlendFunc(GL_ONE_MINUS_SRC_ALPHA, GL_SRC_ALPHA);
+    setHumanShaders();
 
- //    Object human("human_large.obj", 1, 0.0, 0.0, 0.0, 0.0, -14.5, 0.0, 4.5);
- //    // const char *path1 = "skin.tga";
- //   	renderFunction(human);
+    Object human("human_large.obj", 1, 0.0, 0.0, 0.0, 0.0, -14.5, 0.0, 4.5);
+    // const char *path1 = "skin.tga";
+   	renderFunction(human);
 
-	// glDisable(GL_BLEND);
+	glDisable(GL_BLEND);
 
     // setCatheterShaders();
     // Object catheter("catheter_model.obj", 1, 90.0, 0.0, 0.0, 0.4, 0.0, 1.6, 20.0);
@@ -629,11 +673,32 @@ void setParameters(GLuint program)
         std::cout << "Warning: can't find uniform variable alpha_ !\n";
     glUniform1f(localpha, alpha_);
 
-	GLint loc = glGetUniformLocation(program, "texSampler");
+	GLint locblend = glGetUniformLocation(program, "blendMap");
+	if (locblend == -1)
+        std::cout << "Warning: can't find uniform variable blendMap !\n";
+    glUniform1i(locblend, 0);
 
-	if (loc == -1)
-        std::cout << "Warning: can't find uniform variable texSampler !\n";
-    glUniform1f(loc, id);
+	GLint locred = glGetUniformLocation(program, "texAort");
+ 	if (locred == -1)
+        std::cout << "Warning: can't find uniform variable texAort !\n";
+    glUniform1i(locred, 1);   
+
+
+	GLint locblue = glGetUniformLocation(program, "texPulm");
+ 	if (locblue == -1)
+        std::cout << "Warning: can't find uniform variable texPulm !\n";
+    glUniform1i(locblue, 2);   
+
+	GLint locmuscle = glGetUniformLocation(program, "texMuscle");
+ 	if (locmuscle == -1)
+        std::cout << "Warning: can't find uniform variable texMuscle !\n";
+    glUniform1i(locmuscle, 3);  
+
+	GLint locback = glGetUniformLocation(program, "texBackground");
+ 	if (locback == -1)
+        std::cout << "Warning: can't find uniform variable texBackground !\n";
+    glUniform1i(locback, 4);  
+
 }
 
 

@@ -1,0 +1,139 @@
+I = imread("t4.png");
+figure(1);
+
+
+gray_I = rgb2gray(I);
+
+figure(2);
+imshow(gray_I);
+
+
+k1 = 50;
+k2 = 80;
+
+figure(1);
+
+inputImage = gray_I;
+imshow(inputImage);
+
+hold off;
+
+%creat normalized histogram
+[nrow, ncol] = size(inputImage);
+total_N = N_row * N_col;
+
+
+for i = 1:N_row
+    for j = 1:N_col
+
+        if inputImage(i,j) > k2
+            inputImage(i,j) = 255;
+        elseif (inputImage(i,j) > k1) && (inputImage(i,j) <k2)
+            inputImage(i,j) = 125;
+        else
+            inputImage(i,j) = 0;
+        end
+
+    end
+
+end
+
+final_ = I;
+for i = 1:nrow
+    for j = 1:ncol
+        if inputImage(i,j) == 0
+            final_(i,j,1) = uint8(0);
+            final_(i,j,2) = uint8(0);
+            final_(i,j,3) = uint8(255);
+        end
+
+        if inputImage(i,j) == 125
+            final_(i,j,1) = uint8(0);
+            final_(i,j,2) = uint8(255);
+            final_(i,j,3) = uint8(0);
+        end
+        
+        if inputImage(i,j) == 255
+            final_(i,j,1) = uint8(255);
+            final_(i,j,2) = uint8(0);
+            final_(i,j,3) = uint8(0);
+        end
+        
+    end
+end
+
+figure(3);
+imshow(final_);
+
+distmap = inputImage;
+[Dist1,IDX] = bwdist(distmap);
+
+Dist1(Dist1 ~=1) = 0;
+
+distmap(distmap == 0) = 75;
+distmap(
+
+% radius = 20;
+% sigma = 5; %6sigma-1 >= r for gaussian
+% 
+% temp = final_;
+% I = ones(2*radius+1, 2*radius+1);
+% for i = radius+1:1:nrow-(radius+1)
+%     for j = radius+1:1:ncol-(radius+1)
+%         intensity = inputImage(i,j);
+%         neighbor = inputImage( i-radius:i+radius, j-radius:j+radius );
+%         edge = neighbor(neighbor ~= intensity);
+%         if ~isempty(edge)
+%  
+%             edge = unique(edge);
+%             R_ = temp(i-radius:i+radius, j-radius:j+radius, 1 );
+%             G_ = temp(i-radius:i+radius, j-radius:j+radius, 2 );
+%             B_ = temp(i-radius:i+radius, j-radius:j+radius, 3 );
+%             for k = 1: length(edge)
+%                 edge_intensity = edge(k);
+%                 if edge_intensity == 0
+%                     r = 0;
+%                     g = 0;
+%                     b = 255;                
+%                 end
+% 
+%                 if edge_intensity == 125
+%                     r = 125;
+%                     g = 0;
+%                     b = 0;
+%                 end
+% 
+%                 if edge_intensity == 255
+%                     r = 0;
+%                     g = 0;
+%                     b = 0;
+%                 end
+%                 
+%                 distmap = neighbor;
+%                 distmap(neighbor == edge_intensity) = 1;
+%                 distmap(neighbor ~= edge_intensity) = 0;
+%                 [Dist,IDX] = bwdist(distmap);
+%                 
+%                 Dist = gaussian_func(Dist,sigma);
+% 
+%                 R_ = R_ + uint8(Dist * r);
+%                 G_ = G_ + uint8(Dist * g);
+%                 B_ = B_ + uint8(Dist * b);
+%             end
+%             
+%             final_(i-radius:i+radius, j-radius:j+radius, 1 ) = R_;
+%             final_(i-radius:i+radius, j-radius:j+radius, 2 ) = G_;
+%             final_(i-radius:i+radius, j-radius:j+radius, 3 ) = B_;    
+%             
+%         end
+%         
+%     end
+% end
+
+
+figure(4);
+imshow(final_);
+
+imwrite(final_,'blend.png');
+
+
