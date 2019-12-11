@@ -10,7 +10,8 @@
 // Feel free to change them
 int getUniformVariable(GLuint program,char *name);
 void update_Light_Position();
-void setParameters(GLuint program);
+void setHeartParameters(GLuint program);
+void setHumanParameters(GLuint program);
 
 void error_exit(int status, char *text);
 int PrintOGLError(char *file, int line);

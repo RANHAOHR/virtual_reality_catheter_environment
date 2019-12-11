@@ -311,7 +311,6 @@ void DisplayFunc(void)
     setHumanShaders();
 
     Object human("human_large.obj", 1, 0.0, 0.0, 0.0, 0.0, -14.5, 0.0, 4.5);
-    // const char *path1 = "skin.tga";
    	renderFunction(human);
 
 	glDisable(GL_BLEND);
@@ -542,7 +541,7 @@ void setHeartShaders()
 	glUseProgram(p);
 
 
-	setParameters(p);
+	setHeartParameters(p);
 
 }
 
@@ -605,7 +604,7 @@ void setHumanShaders()
     //Start to use the program object, which is the part of the current rendering state
     glUseProgram(p);
 
-    setParameters(p);
+    setHumanParameters(p);
 
 }
 
@@ -658,7 +657,7 @@ void update_Light_Position()
 }
 
 //Sets the light positions, etc. parameters for the shaders
-void setParameters(GLuint program)
+void setHeartParameters(GLuint program)
 {
 
 	update_Light_Position();
@@ -667,11 +666,6 @@ void setParameters(GLuint program)
 	if (locns == -1)
         std::cout << "Warning: can't find uniform variable ns_ !\n";
     glUniform1f(locns, ns_);
-
-	GLint localpha = glGetUniformLocation(program, "alpha_");
-	if (localpha == -1)
-        std::cout << "Warning: can't find uniform variable alpha_ !\n";
-    glUniform1f(localpha, alpha_);
 
 	GLint locblend = glGetUniformLocation(program, "blendMap");
 	if (locblend == -1)
@@ -682,7 +676,6 @@ void setParameters(GLuint program)
  	if (locred == -1)
         std::cout << "Warning: can't find uniform variable texAort !\n";
     glUniform1i(locred, 1);   
-
 
 	GLint locblue = glGetUniformLocation(program, "texPulm");
  	if (locblue == -1)
@@ -701,7 +694,22 @@ void setParameters(GLuint program)
 
 }
 
+void setHumanParameters(GLuint program)
+{
 
+	update_Light_Position();
+
+	GLint locns = glGetUniformLocation(program, "ns_");
+	if (locns == -1)
+        std::cout << "Warning: can't find uniform variable ns_ !\n";
+    glUniform1f(locns, ns_);
+
+	GLint localpha = glGetUniformLocation(program, "alpha_");
+	if (localpha == -1)
+        std::cout << "Warning: can't find uniform variable alpha_ !\n";
+    glUniform1f(localpha, alpha_);
+
+}
 /****************************************************************
 Utility methods:
 shader file reader
