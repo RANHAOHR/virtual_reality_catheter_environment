@@ -20,4 +20,6 @@ void setHeartShaders();
 void setHumanShaders();
 void setCatheterShaders();
 
+void readCatheterParam(char* file);
+
 #endif 

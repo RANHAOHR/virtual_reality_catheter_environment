@@ -1,2 +1,3 @@
 Npoints  32
-Nlength  60
+Nlength  180
+initLength  44

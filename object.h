@@ -40,14 +40,11 @@ public:
 	Catheter(char* file, int sign, float rx, float ry, float rz, float tx, float ty, float tz, float s_);
 	~Catheter();
 	void load(char* file, int sign);
-	void readParam(char* file);
+
 	void WorldTranslate(float tx, float ty, float tz);
 	void WorldRotate(float rx, float ry, float rz);
 	void LocalRotate(float rx, float ry, float rz);
 	void LocalScale(float s);
-
-	int Nlength;  //total number of segements
-	int NdiskPts; // number of the sampled points for each circle 
 
 	int verts, faces, norms;    // Number of vertices, faces and normals in the system
 	point *vertList, *normList; // Vertex and Normal Lists, 

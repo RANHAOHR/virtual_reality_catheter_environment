@@ -352,8 +352,6 @@ Catheter::Catheter(char* file, int sign, float rx, float ry, float rz, float tx,
 	WorldTranslate(tx, ty, tz);	
 
 	load(file, sign); // read files generated using the catheter_trajectory.m
-
-	readParam("./models/catheter_param.txt");
 	
 	for (int i = 0; i < verts; ++i)
 	{
@@ -496,24 +494,6 @@ void Catheter::load(char* file, int sign)
     }
 
     norms = verts;
-
-}
-
-void Catheter::readParam(char* file){
-		FILE* pObjectFile = fopen(file, "r");
-	if(!pObjectFile)
-		cout << "Failed to load " << file << "." << endl;
-
-	char DataType[128];
-	int data; 
-	while(!feof(pObjectFile))
-	{
-		fscanf(pObjectFile, "%s %d\n", &DataType, &data);
-		if(strcmp( DataType, "Npoints" ) == 0)
-            NdiskPts = data;
-		else if(strcmp( DataType, "Nlength" ) == 0)
-			Nlength = data;
-	}
 
 }
 

@@ -4,11 +4,11 @@ close all;
 p1 = [-0.7, -3.5, 0.4]';
 p2 = [0.4, 2.7, -0.3]';
 
-X = [-0.7, -0.9, -0.95, -0.8, -0.6, -0.3, 0.0, 0.2, 0.4];
-Y = [-3.5, -2.7, -1.5, -0.5,  0.0,  1.0, 2.0, 2.5, 2.7];
-Z = [ 0.4, 0.42, 0.45, 0.50, 0.55, 0.58, 0.50,0.20,-0.3];
+X = [0.0, -0.4, -0.7, -0.9, -0.95, -0.8, -0.6, -0.3, 0.0, 0.2, 0.4];
+Y = [-5.5, -4.5, -3.5, -2.7, -1.5, -0.5,  0.0,  1.0, 2.0, 2.5, 2.7];
+Z = [0.45, 0.44, 0.4, 0.42, 0.45, 0.50, 0.55, 0.58, 0.50,0.20,-0.3];
 
-Nsample = 100;
+Nsample = 180;
 interp_points = interparc(Nsample,X,Y,Z,'spline');
 figure(1);
 plot3(interp_points(:,1), interp_points(:,2), interp_points(:,3));
@@ -71,7 +71,7 @@ for i = 1:Nsample-1
 end
 
 figure(2);
-for i = 1: (N_points-1)*2 +2 % test try
+for i = 1: (N_points-1)*2+2 % test try
     index = faceList(i,:);
     vertex1 = pts_(index(1),:);
     vertex2 = pts_(index(2),:);
@@ -103,8 +103,9 @@ end
 
 fclose(fid);
 
-
+initlength = 44;
 fid = fopen('catheter_param.txt','w');
 fprintf(fid, '%s  %d\n', 'Npoints', N_points );
 fprintf(fid, '%s  %d\n', 'Nlength', Nsample );
+fprintf(fid, '%s  %d\n', 'initLength', initlength );
 fclose(fid);

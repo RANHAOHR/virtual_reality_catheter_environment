@@ -9,6 +9,7 @@ Spring 2006
 #include <stdlib.h>
 #include <iostream>
 #include <math.h>
+#include <string.h>
 
 #include <GL/glew.h>
 #include <GL/glut.h>
@@ -40,6 +41,7 @@ GLuint *textures = new GLuint[Ntex];
 // catheter params
 int cur_length = 0;
 int catheter_length = 0;
+int width_pts = 0;
 bool showCatheter = false;
 //Projection, camera contral related declerations
 int WindowWidth,WindowHeight;
@@ -193,12 +195,30 @@ void mappingFunction(Object &mesh){
 
 }
 
+void readCatheterParam(char* file){
+		FILE* pObjectFile = fopen(file, "r");
+	if(!pObjectFile)
+		cout << "Failed to load " << file << "." << endl;
+
+	char DataType[128];
+	int data; 
+	while(!feof(pObjectFile))
+	{
+		fscanf(pObjectFile, "%s %d\n", &DataType, &data);
+		if(strcmp( DataType, "Npoints" ) == 0)
+            width_pts = data;
+		else if(strcmp( DataType, "Nlength" ) == 0)
+			catheter_length = data;
+		else if(strcmp( DataType, "initLength" ) == 0)
+			cur_length = data;
+	}
+
+}
 
 void renderCatheter( Catheter &mesh){
 
-	for (int i = 0; i < cur_length * (mesh.NdiskPts - 1 ) * 2 + 2 ; i++) // render the current length (number of segments) of catheter
+	for (int i = 0; i < cur_length * (width_pts - 1 ) * 2 + 2 ; i++) // render the current length (number of segments) of catheter
 	{
-
 		glBegin(GL_TRIANGLES);
 			point v1, v2, v3, n1, n2, n3;
 			v1 = mesh.vertList[mesh.faceList[i].v1];
@@ -256,7 +276,7 @@ void DisplayFunc(void)
     {
 	    setCatheterShaders();
 	    Catheter catheter_model("./models/catheter.obj", 1, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0);
-	    catheter_length = catheter_model.Nlength; // total length (number of segments)
+
 	    renderCatheter(catheter_model);   
     }
 
@@ -374,6 +394,8 @@ int main(int argc, char **argv)
 	glutMouseFunc(MouseFunc);
     glutMotionFunc(MotionFunc);
     glutKeyboardFunc(KeyboardFunc);
+
+	readCatheterParam("./models/catheter_param.txt");
 
 	glutMainLoop();
 
@@ -598,7 +620,7 @@ void update_Light_Position()
 	glEnable(GL_LIGHT1);
 
 	// lights for catheter.
-	GLfloat light_position3[] = { -0.4,0.0,0.3,0.0 }; 
+	GLfloat light_position3[] = { 0,0.0,0.3,0.0 }; 
 
 	glLightfv(GL_LIGHT2, GL_POSITION, light_position3);
 	glLightf(GL_LIGHT2, GL_CONSTANT_ATTENUATION, 10.0);
