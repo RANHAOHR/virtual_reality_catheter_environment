@@ -8,7 +8,7 @@ X = [-0.7, -0.9, -0.95, -0.8, -0.6, -0.3, 0.0, 0.2, 0.4];
 Y = [-3.5, -2.7, -1.5, -0.5,  0.0,  1.0, 2.0, 2.5, 2.7];
 Z = [ 0.4, 0.42, 0.45, 0.50, 0.55, 0.58, 0.50,0.20,-0.3];
 
-Nsample = 60;
+Nsample = 100;
 interp_points = interparc(Nsample,X,Y,Z,'spline');
 figure(1);
 plot3(interp_points(:,1), interp_points(:,2), interp_points(:,3));
@@ -71,7 +71,7 @@ for i = 1:Nsample-1
 end
 
 figure(2);
-for i = 1: (N_points-1)*2 % test try
+for i = 1: (N_points-1)*2 +2 % test try
     index = faceList(i,:);
     vertex1 = pts_(index(1),:);
     vertex2 = pts_(index(2),:);
@@ -93,9 +93,9 @@ fid = fopen('catheter.obj','w');
 for j = 1:size(pts_, 1)
      fprintf(fid, '%s  %4.4f %4.4f %4.4f \n', 'v', pts_(j, 1), pts_(j, 2), pts_(j, 3) );
 end
-for j = 1:size(interp_points, 1)
-     fprintf(fid, '%s  %4.4f %4.4f %4.4f \n', 'c', interp_points(j, 1), interp_points(j, 2), interp_points(j, 3) );
-end
+% for j = 1:size(interp_points, 1)
+%      fprintf(fid, '%s  %4.4f %4.4f %4.4f \n', 'c', interp_points(j, 1), interp_points(j, 2), interp_points(j, 3) );
+% end
 
 for j = 1:size(faceList,1)
      fprintf(fid, '%s  %d %d %d \n', 'f', faceList(j, 1), faceList(j, 2), faceList(j, 3) );

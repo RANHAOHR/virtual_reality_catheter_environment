@@ -1,2 +1,2 @@
 Npoints  32
-Nlength  60
+Nlength  100

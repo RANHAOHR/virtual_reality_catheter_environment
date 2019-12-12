@@ -93,8 +93,8 @@ void Object::load(char* file, int sign)
 	FILE* pObjectFile = fopen(file, "r");
 	if(!pObjectFile)
 		cout << "Failed to load " << file << "." << endl;
-	else
-		cout << "Successfully loaded " << file << "." << endl;
+	// else
+	// 	cout << "Successfully loaded " << file << "." << endl;
 
 	char DataType[128];
 	float x, y, z;
@@ -138,8 +138,8 @@ void Object::load(char* file, int sign)
 		{
 			fscanf(pObjectFile, "%f %f %f\n", &x, &y, &z);
 			vertList[CurrentVertex].x = x;
-			vertList[CurrentVertex].y = y;//+1;
-			vertList[CurrentVertex].z = z;//-3;
+			vertList[CurrentVertex].y = y;
+			vertList[CurrentVertex].z = z;
 			vertList[CurrentVertex].h = 1;
 
 			if (min_x > x)
@@ -174,22 +174,9 @@ void Object::load(char* file, int sign)
 				max_z = z;
 			}
 
-
 	    tex_origin.x = (max_x + min_x) /2;
 	    tex_origin.z = (max_z + min_z) /2;
 		tex_origin.y = (max_y + min_y) / 2;
-	    if( (max_x - min_x) > (max_z - min_z) ){
-	    	if ( (max_x - min_x) > (max_y - min_y) )
-	    	{
-	    		obj_r = (max_x - min_x);
-	    	}else{obj_r = (max_y - min_y);}
-	    }else{
-	    	if ( (max_z - min_z) > (max_y - min_y) )
-	    	{
-	    		obj_r = (max_z - min_z);
-	    	}else{obj_r = (max_y - min_y);}
-
-	    }
 
 		CurrentVertex++;
 		}
@@ -350,7 +337,7 @@ void Object::LocalRotate(float rx, float ry, float rz)
 }
 
 
-/* Catheter object is not uploaded as an obj file */
+/* Catheter object is in different format */
 Catheter::Catheter(char* file, int sign, float rx, float ry, float rz, float tx, float ty, float tz, float s_)
 {
 	// Load the identity for the initial modeling matrix
@@ -364,7 +351,7 @@ Catheter::Catheter(char* file, int sign, float rx, float ry, float rz, float tx,
 	WorldRotate((float)(M_PI*rx/180.0), (float)(M_PI*ry/180.0), (float)(M_PI*rz/180.0));
 	WorldTranslate(tx, ty, tz);	
 
-	load(file, sign);
+	load(file, sign); // read files generated using the catheter_trajectory.m
 
 	readParam("./models/catheter_param.txt");
 	
@@ -372,12 +359,6 @@ Catheter::Catheter(char* file, int sign, float rx, float ry, float rz, float tx,
 	{
 		point vert_ = vertList[i];
 		vertList[i] =  Transform(ModelMatrix, vert_);
-	}
-
-	for (int i = 0; i < centers; ++i)
-	{
-		point vert_ = centList[i];
-		centList[i] =  Transform(ModelMatrix, vert_);
 	}
 
 	float *inverseTrans_ = inverseTransp(ModelMatrix); // if normal needs to be transformed
@@ -395,7 +376,6 @@ Catheter::~Catheter()
 	delete [] vertList;
 	delete [] normList;
 	delete [] faceList;	
-	delete [] centList;
 }
 
 
@@ -405,33 +385,26 @@ void Catheter::load(char* file, int sign)
 	FILE* pObjectFile = fopen(file, "r");
 	if(!pObjectFile)
 		cout << "Failed to load " << file << "." << endl;
-	else
-		cout << "Successfully loaded " << file << "." << endl;
+	// else
+	// 	cout << "Successfully loaded " << file << "." << endl;
 
 	char DataType[128];
 	float x, y, z;
 	unsigned int v1, v2, v3;
 	// Scan the file and count the faces and vertices
-	verts = faces = centers = 0;
+	verts = faces = 0;
 	while(!feof(pObjectFile))
 	{
 		fscanf(pObjectFile, "%s %f %f %f\n", &DataType, &x, &y, &z);
 		if(strcmp( DataType, "v" ) == 0)
             verts++;
-		else if(strcmp( DataType, "c" ) == 0)
-			centers++;
 		else if(strcmp( DataType, "f" ) == 0)
 			faces++;
 	}
 	faceList = (faceStruct *)malloc(sizeof(faceStruct)*faces);
 	vertList = (point *)malloc(sizeof(point)*verts);
-	centList = (point *)malloc(sizeof(point)*centers);
 
 	fseek(pObjectFile, 0L, SEEK_SET);
-
-//	cout << "Number of vertices: " << verts << endl;
-//	cout << "Number of faces: " << faces << endl;
-//	cout << "Number of VN: " << norms << endl;
 
 	// Load and create the faces and vertices
 	int CurrentVertex = 0, CurrentCenter = 0, CurrentFace = 0;
@@ -445,19 +418,11 @@ void Catheter::load(char* file, int sign)
 		{
 			fscanf(pObjectFile, "%f %f %f\n", &x, &y, &z);
 			vertList[CurrentVertex].x = x;
-			vertList[CurrentVertex].y = y;//+1;
-			vertList[CurrentVertex].z = z;//-3;
+			vertList[CurrentVertex].y = y;
+			vertList[CurrentVertex].z = z;
 			vertList[CurrentVertex].h = 1;
 
 			CurrentVertex++;
-		}
-		else if(strcmp( DataType, "c" ) == 0){
-			fscanf(pObjectFile, "%f %f %f\n", &x, &y, &z);
-			centList[CurrentCenter].x = x;
-			centList[CurrentCenter].y = y;
-			centList[CurrentCenter].z = z;
-			centList[CurrentCenter].h = 1;
-			CurrentCenter++;
 		}
 		else if(strcmp( DataType, "f" ) == 0)
 		{
@@ -538,8 +503,6 @@ void Catheter::readParam(char* file){
 		FILE* pObjectFile = fopen(file, "r");
 	if(!pObjectFile)
 		cout << "Failed to load " << file << "." << endl;
-	else
-		cout << "Successfully loaded " << file << "." << endl;
 
 	char DataType[128];
 	int data; 

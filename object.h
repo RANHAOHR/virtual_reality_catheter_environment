@@ -30,8 +30,7 @@ public:
 	faceStruct *faceList;	    // Face List
 	float ModelMatrix[16];
 
-	float max_x, min_x, max_y, min_y, max_z, min_z; 
-	float obj_r;
+	float max_x, min_x, max_y, min_y, max_z, min_z; // parametrizion of the texture mapping function
 	point tex_origin;
 };
 
@@ -47,11 +46,11 @@ public:
 	void LocalRotate(float rx, float ry, float rz);
 	void LocalScale(float s);
 
-	int Nlength;
-	int NdiskPts;
+	int Nlength;  //total number of segements
+	int NdiskPts; // number of the sampled points for each circle 
 
-	int verts, faces, norms, centers;    // Number of vertices, faces and normals in the system
-	point *vertList, *normList, *centList; // Vertex and Normal Lists
+	int verts, faces, norms;    // Number of vertices, faces and normals in the system
+	point *vertList, *normList; // Vertex and Normal Lists, 
 	faceStruct *faceList;	    // Face List
 	float ModelMatrix[16];
 };

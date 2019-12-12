@@ -27,16 +27,11 @@ using namespace std;
 char *shaderFileRead(char *fn);
 
 GLuint vertex_shader,fragment_shader,p;
-int illimunationMode = 0;
-int shadingMode = 0;
-int lightSource = 0;
+
 int program=-1;
 
 float alpha_ = 0.0;
-//Parameters for Copper (From: "Computer Graphics Using OpenGL" BY F.S. Hill, Jr.) 
-GLfloat ambient_cont [] = {0.19125,0.0735,0.0225};
-GLfloat diffuse_cont [] = {0.7038,0.27048,0.0828};
-GLfloat specular_cont [] = {0.256777,0.137622,0.086014};
+
 GLfloat ns_ = 5000;
 
 int Ntex = 5;
@@ -92,13 +87,12 @@ point textureCoordSphere(Object &mesh, point &v_){
 
 }
 
-void renderFunction( Object &mesh){
+void renderHuman( Object &mesh){
 
 	for (int i = 0; i < mesh.faces; i++)
 	{
-
 		glBegin(GL_TRIANGLES);
-			point v1, v2, v3, n1, n2, n3, coord1,coord2, coord3;
+			point v1, v2, v3, n1, n2, n3;
 			v1 = mesh.vertList[mesh.faceList[i].v1];
 			v2 = mesh.vertList[mesh.faceList[i].v2];
 			v3 = mesh.vertList[mesh.faceList[i].v3];
@@ -107,15 +101,12 @@ void renderFunction( Object &mesh){
 			n3 = mesh.normList[mesh.faceList[i].n3];
 
 			glNormal3f(n1.x, n1.y, n1.z);
-			// glTexCoord2f (coord1.x, coord1.y);
 			glVertex3f(v1.x, v1.y, v1.z);
 	
 			glNormal3f(n2.x, n2.y, n2.z);
-			// glTexCoord2f (coord2.x, coord2.y);
 			glVertex3f(v2.x, v2.y, v2.z);
 				
 			glNormal3f(n3.x, n3.y, n3.z);
-			// glTexCoord2f (coord3.x, coord3.y);
 			glVertex3f(v3.x, v3.y, v3.z);
 
 		glEnd();
@@ -172,7 +163,7 @@ void mappingFunction(Object &mesh){
 	{
 
 		glBegin(GL_TRIANGLES);
-			point v1, v2, v3, n1, n2, n3, coord1, coord2, coord3, t1, t2, t3;
+			point v1, v2, v3, n1, n2, n3, t1, t2, t3;
 			v1 = mesh.vertList[mesh.faceList[i].v1];
 			v2 = mesh.vertList[mesh.faceList[i].v2];
 			v3 = mesh.vertList[mesh.faceList[i].v3];
@@ -205,7 +196,7 @@ void mappingFunction(Object &mesh){
 
 void renderCatheter( Catheter &mesh){
 
-	for (int i = 0; i < cur_length * (mesh.NdiskPts - 1 ) * 2; i++)
+	for (int i = 0; i < cur_length * (mesh.NdiskPts - 1 ) * 2 + 2 ; i++) // render the current length (number of segments) of catheter
 	{
 
 		glBegin(GL_TRIANGLES);
@@ -228,7 +219,7 @@ void renderCatheter( Catheter &mesh){
 
 		glEnd();
 
-	}	
+	}
 
 }
 
@@ -255,6 +246,8 @@ void DisplayFunc(void)
 	glEnable(GL_TEXTURE_2D);
 
 
+	update_Light_Position();
+
     setHeartShaders();
     Object heart("./models/heart_cross_section.obj", 1, -100.0, 30.0, 0.0, 0.4, 1.0, -0.1, 0.5);
     mappingFunction(heart);
@@ -263,7 +256,7 @@ void DisplayFunc(void)
     {
 	    setCatheterShaders();
 	    Catheter catheter_model("./models/catheter.obj", 1, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0);
-	    catheter_length = catheter_model.Nlength;
+	    catheter_length = catheter_model.Nlength; // total length (number of segments)
 	    renderCatheter(catheter_model);   
     }
 
@@ -272,10 +265,9 @@ void DisplayFunc(void)
     setHumanShaders();
 
     Object human("./models/human_large.obj", 1, 0.0, 0.0, 0.0, 0.0, -14.5, 0.0, 4.5);
-   	renderFunction(human);
+   	renderHuman(human);
 
 	glDisable(GL_BLEND);
-
 
 	glutSwapBuffers();
 }
@@ -331,17 +323,6 @@ void KeyboardFunc(unsigned char key, int x, int y)
 	case 'Q':
 	case 'q':
 		exit(1);
-		break;
-	case 'w':
-	case 'W':
-		if (illimunationMode == 0)
-		{
-			illimunationMode = 1;
-		}
-		else
-		{
-			illimunationMode = 0;
-		}
 		break;
 	case 'a':
 	case 'A':
@@ -408,17 +389,14 @@ void error_exit(int status, char *text)
 {
 
 	// Print error message
-
 	fprintf(stderr,"Internal Error %i: ", status);
 	fprintf(stderr,text);
 	printf("\nTerminating as Result of Internal Error.\nPress Enter to exit.\n");
 
 	// Keep the terminal open
-
 	int anyKey = getchar();
 
 	// Exit program
-
 	exit(status);
 }
 
@@ -453,8 +431,6 @@ void setHeartShaders()
 	const char * vv = vs;
 	const char * ff = fs;
 
-//	GLint vertCompiled, fragCompiled;
-
 	//set the shader's source code by using the strings read from the shader files.
 	glShaderSource(vertex_shader, 1, &vv,NULL);
 	glShaderSource(fragment_shader, 1, &ff,NULL);
@@ -468,35 +444,17 @@ void setHeartShaders()
 	//create an empty program object to attach the shader objects
 	p = glCreateProgram();
 
-
 	//attach the shader objects to the program object
 	glAttachShader(p,vertex_shader);
 	glAttachShader(p,fragment_shader);
 	// define unifrom variables
-
-	/*
-	**************
-	Programming Tip:
-	***************
-	Delete the attached shader objects once they are attached.
-	They will be flagged for removal and will be freed when they are no more used.
-	*/
 	glDeleteShader(vertex_shader);
 	glDeleteShader(fragment_shader);
 
-	//Link the created program.
-	/*
-	**************
-	Programming Tip:
-	***************
-	You can trace the status of link operation by calling
-	"glGetObjectParameterARB(p,GL_OBJECT_LINK_STATUS_ARB)"
-	*/
 	glLinkProgram(p);
 
 	//Start to use the program object, which is the part of the current rendering state
 	glUseProgram(p);
-
 
 	setHeartParameters(p);
 
@@ -518,8 +476,6 @@ void setHumanShaders()
     const char * vv = vs;
     const char * ff = fs;
 
-//	GLint vertCompiled, fragCompiled;
-
     //set the shader's source code by using the strings read from the shader files.
     glShaderSource(vertex_shader, 1, &vv,NULL);
     glShaderSource(fragment_shader, 1, &ff,NULL);
@@ -538,24 +494,9 @@ void setHumanShaders()
     glAttachShader(p,fragment_shader);
     // define unifrom variables
 
-    /*
-    **************
-    Programming Tip:
-    ***************
-    Delete the attached shader objects once they are attached.
-    They will be flagged for removal and will be freed when they are no more used.
-    */
     glDeleteShader(vertex_shader);
     glDeleteShader(fragment_shader);
 
-    //Link the created program.
-    /*
-    **************
-    Programming Tip:
-    ***************
-    You can trace the status of link operation by calling
-    "glGetObjectParameterARB(p,GL_OBJECT_LINK_STATUS_ARB)"
-    */
     glLinkProgram(p);
 
     //Start to use the program object, which is the part of the current rendering state
@@ -598,24 +539,9 @@ void setCatheterShaders()
     glAttachShader(p,fragment_shader);
     // define unifrom variables
 
-    /*
-    **************
-    Programming Tip:
-    ***************
-    Delete the attached shader objects once they are attached.
-    They will be flagged for removal and will be freed when they are no more used.
-    */
     glDeleteShader(vertex_shader);
     glDeleteShader(fragment_shader);
 
-    //Link the created program.
-    /*
-    **************
-    Programming Tip:
-    ***************
-    You can trace the status of link operation by calling
-    "glGetObjectParameterARB(p,GL_OBJECT_LINK_STATUS_ARB)"
-    */
     glLinkProgram(p);
 
     //Start to use the program object, which is the part of the current rendering state
@@ -671,23 +597,36 @@ void update_Light_Position()
 	glEnable(GL_LIGHTING);
 	glEnable(GL_LIGHT1);
 
-	glLightfv(GL_LIGHT2, GL_POSITION, light_position);
+	// lights for catheter.
+	GLfloat light_position3[] = { -0.4,0.0,0.3,0.0 }; 
+
+	glLightfv(GL_LIGHT2, GL_POSITION, light_position3);
+	glLightf(GL_LIGHT2, GL_CONSTANT_ATTENUATION, 10.0);
 	GLfloat ambientColor2[] = {1.0,1.0,1.0,1.0};
 	GLfloat dissuseColor2[] = {0.0,1.0,1.0,1.0};
 	GLfloat specularColor2[] = {0.0,1.0,1.0,1.0};	
 	glLightfv(GL_LIGHT2, GL_AMBIENT, ambientColor2);
 	glLightfv(GL_LIGHT2, GL_DIFFUSE, dissuseColor2);
 	glLightfv(GL_LIGHT2, GL_SPECULAR, specularColor2);
+
 	glEnable(GL_LIGHTING);
 	glEnable(GL_LIGHT2);
+
+	GLfloat light_position4[] = { 0.4,0.0,0.3,0.0 };
+	glLightfv(GL_LIGHT3, GL_POSITION, light_position4);
+	glLightf(GL_LIGHT3, GL_CONSTANT_ATTENUATION, 10.0);	
+	glLightfv(GL_LIGHT3, GL_AMBIENT, ambientColor2);
+	glLightfv(GL_LIGHT3, GL_DIFFUSE, dissuseColor2);
+	glLightfv(GL_LIGHT3, GL_SPECULAR, specularColor2);
+
+	glEnable(GL_LIGHTING);
+	glEnable(GL_LIGHT3);
+
 }
 
 //Sets the light positions, etc. parameters for the shaders
 void setHeartParameters(GLuint program)
 {
-
-	update_Light_Position();
-
 	GLint locns = glGetUniformLocation(program, "ns_");
 	if (locns == -1)
         std::cout << "Warning: can't find uniform variable ns_ !\n";
@@ -722,9 +661,6 @@ void setHeartParameters(GLuint program)
 
 void setHumanParameters(GLuint program)
 {
-
-	update_Light_Position();
-
 	GLint locns = glGetUniformLocation(program, "ns_");
 	if (locns == -1)
         std::cout << "Warning: can't find uniform variable ns_ !\n";
@@ -739,9 +675,6 @@ void setHumanParameters(GLuint program)
 
 void setCatheterParameters(GLuint program)
 {
-
-	update_Light_Position();
-
 	GLint locns = glGetUniformLocation(program, "ns_");
 	if (locns == -1)
         std::cout << "Warning: can't find uniform variable ns_ !\n";
@@ -764,10 +697,10 @@ char *shaderFileRead(char *fn) {
 		cout<< "Failed to load " << fn << endl;
 		return " ";
 	}
-	else
-	{
-		cout << "Successfully loaded " << fn << endl;
-	}
+	// else
+	// {
+	// 	cout << "Successfully loaded " << fn << endl;
+	// }
 	
 	char *content = NULL;
 
